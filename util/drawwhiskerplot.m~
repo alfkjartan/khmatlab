@@ -1,0 +1,63 @@
+function drawwhiskerplot(draw_data, lineWidth, width, type, legnd)
+% drawwhiskerplot(draw_data, lineWidth, width, type)
+% 
+% Input
+%    draw_data   ->  n x 2 x m, where n is length of series, m is
+%                    number of series
+%     type:
+%   0   - default. whiskers both ways
+%   1   - upper whiskers only
+%   2   - lower whiskers only
+
+% Kjartan Halvorsen
+
+
+symbols = {'k+', 'ko', 'ks', 'kv', 'kd'};
+
+n = size(draw_data, 1);
+m = size(draw_data, 3);
+
+if nargin == 1
+  width = 0.4 / m ;
+  lineWidth = 1;
+end
+
+if nargin < 4
+  type = 0;
+end
+
+
+unit = (1-1/(1+n))/(1+9/(width+3));
+    
+hold on;       
+
+plhndls = zeros(1,m);
+for j = 1:m
+  offs = (j-ceil(m/2))*unit/3;
+  for i = 1:n
+        
+  v = draw_data(i,:,j);
+  vup = v(1)+v(2);
+  vdn = v(1)-v(2);
+  if type==1
+    vd = vup;
+  elseif type==2
+    vup = vd;
+  end
+    
+  % draw the mean
+  plhndsl(j) = plot([i+offs], v(1), symbols{j},  'LineWidth', lineWidth);
+  % draw the max line
+  plot([i+offs-unit, i+offs+unit], [vup, vup], 'LineWidth', lineWidth);
+  % draw min line
+  plot([i+offs-unit, i+offs+unit], [vdn, vdn], 'LineWidth', lineWidth);
+  % draw vertical line
+  plot([i+offs, i+offs], [v(1), vup], 'LineWidth', lineWidth);
+  plot([i+offs, i+offs], [v(1), vdn], 'LineWidth', lineWidth);
+  
+  end
+end
+
+if (nargin > 4)
+  legend(plhndsl, legnd)
+end

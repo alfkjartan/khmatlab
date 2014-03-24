@@ -1,0 +1,38 @@
+function [M, Mtrue] = generalized_inertia(km, states)
+%%  M = generalized_inertia(km, states)
+%% Returns the generalized inertia for the manipulator described by the model struct km.
+%% See eq (4.19) and eq (4.29) in Murray, Li, Sastry 
+%%
+%% Input
+%%    km         ->  The model struct
+%%    states     ->  The sequence of states, (nsts x nfr)
+%% Output
+%%    M          <-  The generalized manipulator inertia matrix (nsts x nsts x nfr)
+
+%% Kjartan Halvorsen
+%% 2013-05-29
+
+if nargin == 0
+   [M, Mtrue] = do_unit_test();
+else
+  [nsts, nfrs] = size(states);
+
+  M = zeros(nsts, nsts, nfrs);
+
+  Mlinks = link_inertia(km); % Returns a (6 x 6 x nsegms) matrix
+  nsegms = size(Mlinks,3);
+
+  for i=1:nfrs
+    state = states(:,i);
+    Jsb = link_jacobians(km, state); %% Returns a (6 x nsts x nsgms) matrix
+    for s=1:nsegms
+      Jsbs = Jsb(:,:,s);
+      M(:,:,i) = M(:,:,i) + Jsbs'*Mlinks(:,:,s)*Jsbs;
+    end
+  end
+
+end
+
+function [M, Mtrue] = do_unit_test()
+
+%% Construct model of the scara robot

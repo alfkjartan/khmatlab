@@ -1,0 +1,33 @@
+function create6doffile
+% create6doffile
+% Creates a file with 6dof data and possibly force data from a c3d
+% file
+
+% Kjartan Halvorsen
+% 2006-02-21
+
+[xmlfile, pth] = uigetfile('*.xml', 'Open the xml file');
+
+  if ~xmlfile
+    abort('No xml file. Aborting', vis3dscript);
+  end
+
+  cd(pth)
+
+  % Parse the xml file
+  try
+    dom = xmlread(fullfile(pth, xmlfile));
+  catch
+    abort(['Could not parse the xml file ',...
+	      xmlfile, '. Please check the syntax!'], vis3dscript);
+  end
+
+  % List of subject nodes
+  subjectnodes = getChildNodes(dom);
+
+  %for s = 0:(getLength(subjectnodes)-1) % Indexed from 0
+  for s = 0 % Allow only one subject per file.
+    subjnode = item(subjectnodes, s);
+    
+    modelfile = getAttribute(subjnode, 'modelfile');
+    modelfile = fullfile(stw_home, char(modelfile));

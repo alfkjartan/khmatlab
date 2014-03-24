@@ -1,0 +1,69 @@
+%[X, Err, S, Res, Pred, Cost] =
+%     ekf_update(Y, x0, S, resid_func, resid_func_params, V)
+%
+% EKF update step using todorovs formulation and implementation. Made more general
+% by taking name of  dynamics- and residual functions.
+%
+% Y: Measurement
+% x0: Predicted state
+% S0: covariance of predicted state
+%
+% resid_func, resid_func_params: Name of function that computes the residual function and its jacobian. 
+%
+% V: covariance of the residuals (i.e. sensor noise)
+%
+% X: Updated state vector
+% S: covariance of the state
+% Err: standard errors, same size as X
+% Res: residual
+% Pred: predicted measurements, same size as Y
+% Cost: log-likelihood costs at state estimates
+
+function [x, S, Err, Res, Pred, Cost] = ...
+   ekf_update(y, x0, S0, rfunc, rfparams, V)
+
+  Pinv = inv(S0);
+
+  if iscell(rfparams)
+    [r, predict, J] = ...
+	feval(rfunc, y, x0, rfparams{:});
+  else
+    [r, predict, J] = ...
+	feval(rfunc, y, x0, rfparams);
+  end
+  
+  flagR = (~isnan(r));                      % find available residuals
+  Vinv = inv(V(flagR,flagR));               % invert relevant part of V
+
+  %%----------- extended Kalman filter ---------------------------------
+  JV = J(flagR,:)'*Vinv;
+  %%grad = Pinv*(x-x0);                       % compute gradient
+  %%grad(flagJ)= grad(flagJ)+ JV*r(flagR);
+  grad = zeros(size(x0));                       % compute gradient
+  grad= grad + JV*r(flagR);
+  H = Pinv;
+  H = H + JV*J(flagR,:);
+  Hinv = inv(H);                            % invert Hessian
+
+  x = x0 - Hinv*grad;                        % compute update
+  S = Hinv;                                 % posterior covariance
+
+  Err = sqrt(diag(S));                 % assign standard error
+
+  %%keyboard
+  %% evaluate at estimated state if necessary
+  if nargout>3,
+    if iscell(rfparams)
+      [r, predict] = ...
+	  feval(rfunc, y, x, rfparams{:});
+    else
+      [r, predict] = ...
+	feval(rfunc, y, x, rfparams);
+    end
+  
+      Res = r;
+      Pred = predict;
+      Cost= r(flagR)'*Vinv*r(flagR)/2 + (x-x0)'*Pinv*(x-x0)/2;
+   end
+   
+end

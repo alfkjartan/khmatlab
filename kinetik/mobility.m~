@@ -1,0 +1,32 @@
+function M = mobility(km, states)
+%%  M = mobility(km, states)
+%% Returns the mobility tensor for the manipulator described by the model struct km.
+%%
+%% Input
+%%    km         ->  The model struct
+%%    states     ->  The sequence of states, (nsts x nfr)
+%% Output
+%%    M          <-  The mobility tensor (6 x 6 x nfr)
+
+%% Kjartan Halvorsen
+%% 2013-06-04
+
+
+if nargin == 0
+   do_unit_test();
+else
+  II = generalized_inertia(km, states); % (nsts x nsts x nfr)
+
+  
+  [nsts, nfrs] = size(states);
+  M = zeros(6, 6, nfrs);
+  for i=1:nfrs
+    state = states(:,i);
+    Jse = body_manipulator_jacobian(km, state); % (6 x nsts)
+    M(:,:,i) = Jse * inv(II(:,:,i)) * Jse';
+  end
+end
+
+
+function do_unit_test()
+

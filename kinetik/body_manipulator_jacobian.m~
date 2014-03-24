@@ -1,0 +1,151 @@
+function Jst=body_manipulator_jacobian(tws, gsli, th, twsprox, gprox)
+%% Jst=body_manipulator_jacobian(tws, gsli, th, twsprox, gprox)
+%% Returns the body manipulator jacobian for the kinematic linkage
+%% Input
+%%   tws    ->  nested array of twists
+%%   gsli   ->  nested array of transformations taking points in the local coordinate system of
+%%              each link to the static frame for th=0
+%%   th     ->  generalized coordinates
+%%   twsprox -> twists from root up to current segment (6 x nprox) matrix
+%%   gprox   -> proximal rigid transformations (4 x 4 x nprox) matrix, where the 
+%%              ith transformation is
+%%                 g_i = expr(twsprox(1), thprox(1))* ... * expr(twsprox(i), thprox(i))
+%% Output
+%%   Jsb    <-  The jacobians, a ((6*nendpoints) x nsts) matrix
+
+%% Kjartan Halvorsen
+%% 2013-06-04
+
+if nargin == 0
+   do_unit_test();
+else
+
+  if nargin == 3  % Initial call
+    twsprox = [];
+    thprox = [];
+    gprox = [];
+    nprox = 0;
+  else
+    nprox = size(twsprox, 3);
+  end
+
+  %% First the "own" Jacobian, then the branches
+
+  mygsl = gsli{1};
+  mytws=tws{1};
+  nn=length(mytws);
+  myx=th(1:nn);
+  
+  %% Total number of states
+  nststotal = size(th,1) + nprox;
+
+  gprox = cat(3, gprox, zeros(4,4,nn));
+  twsprox = cat(3, twsprox, zeros(4,4,nn));
+
+  for st=(nn+nprox):-1:(nprox+1)
+    gprox(:,:,st)=expr(mytws{st-nprox}, th(st-nprox));
+    twsprox(:,:,st)=mytws{st-nprox};
+  end
+
+  Jsb = zeros(6, nststotal); 
+  gg=gsli{1};
+  for st=(nn+nprox):-1:1
+    gg=gprox(:,:,st)*gg;
+    Jsb(:,st) = adjoint_trf_inv(vee(twsprox(:,:,st)), gg);
+  end
+
+  % ------------------------------------------------
+  %  The branches
+  % ------------------------------------------------
+
+  if (length(tws)>1) % Branches exist
+    %% For debug  warning(['Found ', int2str(length(tws)-1), ' branches'])
+    twsbr=tws(2:length(tws));
+    gslbr=gsli(2:length(tws));
+    ndist=0;
+    nsts = size(th,1);
+    nbr = 0;
+    for br=1:length(twsbr)
+      Jsbdist = link_jacobians(twsbr{br}, gslbr{br}, 
+			       th((nn+nbr+1):end, 1),...
+			       twsprox,...
+			       gprox);
+      nbr = nbr + length(twsbr{br}{1});
+      Jsb = cat(3, Jsb, Jsbdist);
+    end
+  end
+end
+
+function do_unit_test()
+
+l1 = 1;
+l2 = 2;
+l0 = 0.5;
+
+p1 = [0;l1/2;0];
+p2 = [0;l1+l2/2;0];
+p3 = [0; l1+l2;0];
+p4 = [0;l1+l2;l0];
+
+I3 = eye(3);
+Z3 = zeros(3,3);
+
+m1 = 3;
+m2 = 2;
+m3 = 1;
+m4 = 0.6;
+
+II = diag([1;0.1;2]);
+MM = [I3 Z3
+      Z3 II];
+M1 = m1*MM;
+M2 = m2*MM;
+M3 = m3*MM;
+M4 = m4*MM;
+
+tws = { { hat([0;0;0;0;0;1]) }, 
+	{ { hat([l1;0;0;0;0;1]) }, 
+	  { { hat([l1+l2;0;0;0;0;1]) }, 
+	    { { hat([0;0;1;0;0;0]) } }}}};
+
+gsli = {  [I3 p1; 0 0 0 1] , 
+	{  [I3 p2; 0 0 0 1] , 
+	  {  [I3 p3; 0 0 0 1] , 
+	    {  [I3 p4; 0 0 0 1]  }}}};
+
+th = [pi/4; pi/5; pi/6; pi/7];
+
+keyboard
+
+Jsb = link_jacobians(tws, gsli, th);
+
+Mlinks = cat(3, M1, M2, M3, M4);
+
+M = zeros(4,4);
+for s=1:4
+  Jsbs = Jsb(:,:,s);
+  M = M + Jsbs'*Mlinks(:,:,s)*Jsbs;
+end
+
+
+%% From p 178
+alpha = M1(6,6) + (l1/2)^2*m1 + l1^2*(m2+m3+m4);
+beta = M2(6,6) + M3(6,6) + M4(6,6) + (l2/2)^2*m2 + l2^2*(m3+m4);
+gamma = l1*l2*m3 + l1*l2*m4 + l1*l2/2*m2;
+delta = M3(6,6) + M4(6,6);
+ 
+Mtrue = [alpha+beta+2*gamma*cos(th(2)) beta+gamma*cos(th(2)) delta 0
+	 beta+gamma*cos(th(2)) beta  delta 0
+	 delta delta delta 0
+	 0  0  0 m4];
+
+tol = 1e-12;
+
+if norm(M - Mtrue) > tol
+   disp('Test 1 failed')
+   disp('Expected'), Mtrue
+   disp('Found'), M
+else
+   disp('Test 1 OK')
+end
+

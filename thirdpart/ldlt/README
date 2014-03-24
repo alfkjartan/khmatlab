@@ -1,0 +1,32 @@
+The m-files in this collection compute square root free Cholesky
+factorizations of the form A=L*D*L', modified Cholesky factorizations
+for matrices which may not quite be positive definite, and rank-one
+updates of the factorizations.  These routines were developed for a
+course in nonlinear programming based on "Practical Optimization" by
+Gill, Murray, and Wright.
+
+Routines:
+
+   ldlt       L*D*L' factorization.
+   ldltdown   L*D*L' rank one down date of factorization
+   ldltup     L*D*L' rank one up date
+   mchol      Modified L*D*L' Cholesky factorization for matrices that
+              aren't quite positive definite.
+   testmchol  Routine to demonstrate/test the above routines.
+
+History:
+
+8/19/94  - Fixed the routines to work under version 4.1.1 of Matlab in
+           addition to version 4.2.
+
+12/20/99 - Updated to work under MATLAB 5.x without warnings.
+
+9/6/02 - Now MATLAB 6.1, with some speed enhancements by Michael
+Zibulevsky.
+
+Brian Borchers                                            borchers@nmt.edu
+Department of Mathematics
+New Mexico Tech
+Socorro, NM 87801
+ 
+

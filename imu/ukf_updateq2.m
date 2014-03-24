@@ -1,0 +1,97 @@
+%UKF_UPDATEQ -  Unscented Kalman Filter update step for state vector
+% with quaternion representation of rotation
+%
+% Syntax:
+%   [M,P,K,MU,IS,LH] = UKF_UPDATE2(M,P,Y,h,R,qindstart,h_param,alpha,beta,kappa,mat)
+%
+% In:
+%   M  - Mean state estimate after prediction step
+%   P  - State covariance after prediction step
+%   Y  - Measurement vector.
+%   R  - Measurement covariance.
+%%   qindstart      ->   Row index where quaternion starts. Empty matrix
+%   param - Parameters of h               (optional, default empty)
+%
+% Out:
+%   M  - Updated state mean
+%   P  - Updated state covariance
+%   K  - Computed Kalman gain
+%   MU - Predictive mean of Y
+%   S  - Predictive covariance Y
+%   LH - Predictive probability (likelihood) of measurement.
+%   
+% Description:
+%   Perform augmented form Discrete Unscented Kalman Filter (UKF)
+%   measurement update step. Assumes additive measurement
+%   noise.
+%
+%% Based on UKF_UPDATE2 in ekfukf-library
+%
+% See also:
+%   UKF_PREDICT1, UKF_UPDATE1, UKF_PREDICT2, UKF_PREDICT3, UKF_UPDATE3
+%   UT_TRANSFORM, UT_WEIGHTS, UT_MWEIGHTS, UT_SIGMAS
+
+% History:
+%   08.02.2008 JH Fixed a typo in the syntax description. 
+%   04.05.2007 JH Initial version. Modified from ukf_update1.m
+%              originally created by SS.
+%   
+% 
+% References:
+%   [1] Wan, Merwe: The Unscented Kalman Filter
+%
+% Copyright (C) 2007 Jouni Hartikainen, Simo S�rkk�
+%
+% $Id: ukf_update2.m 480 2010-10-18 07:45:48Z jmjharti $
+%
+% This software is distributed under the GNU General Public 
+% Licence (version 2 or later); please refer to the file 
+% Licence.txt, included with the software, for details.
+
+function [M1,P1, timeused] = ukf_updateq2(M,P,Y,R,nq)
+
+  timeused = zeros(3,1);
+  %
+  % Do transform and make the update
+  %
+  m = size(M,1); 
+  n = size(R,1); 
+
+  %% create sigma points
+  [X,Wm,Wc] = sigma(P,M,nq);
+  %% propagate sigma points
+
+  tic();
+  Z = observe_q2(X);
+  %Z = X(5:7,:);
+  timeused(1) = toc(); % about 1.8 / 200 s
+
+  tic();
+  [Xm, Zm, Px, Pz, Pxz] = sigmacov(X, Z, nq, 0, Wm, Wc);
+  timeused(2) = toc(); % about 3.2 / 200 s
+
+  Pv = Pz + R;
+  K = Pxz / Pv;
+  v = Y-Zm;
+
+  %% Update. Quaternion part is updated using quaternion multiplication
+  tic();
+  M1 = qupdate(M, K, v, nq); 
+  timeused(3) = toc(); % about 0.2 / 200 s
+
+  %xv = qstate2vstate(M, qi);
+  %xvup = xv + K * v;
+  %M1 = vstate2qstate(xvup, qi);
+  
+
+  P1 = P - K * Pv * K'; % P - Pxz* Pv^-1 * Pv * Pv^-1 * Pzx 
+		        % = P - Pxz * Pv^-1 * Pzx
+
+  return
+
+  try
+    chol(P1);
+  catch
+    keyboard
+  end
+

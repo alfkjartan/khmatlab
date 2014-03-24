@@ -1,0 +1,18 @@
+[b2,a2] = butter(4, 10/50);
+paddelR = filtfilt(b2,a2,paddelR);
+paddelL = filtfilt(b2,a2,paddelL);
+
+peaksR = peakdet(paddelR(:,1), 1e-3);
+peaksL = peakdet(paddelL(:,1), 1e-3);
+
+abovethrR = find(paddelR > 0.35);
+peaksR = intersect(peaksR, abovethrR); 
+TR = peaksR(2:end) - peaksR(1:end-1);
+doubletsR = find(TR < 30);
+peaksR(doubletsR) = [];
+
+abovethrL = find(paddelL > 0.35);
+peaksL = intersect(peaksL, abovethrL); 
+TL = peaksL(2:end) - peaksL(1:end-1);
+doubletsL = find(TL < 30); % Find double peaks. Skip the first
+peaksL(doubletsR) = [];

@@ -1,0 +1,81 @@
+function plot_imu_results(TB, xB, qBf, pd, bfr, mxfr, figh, fixp12, \
+			  p12, fixq12)
+
+  if (size(xB, 1) == 6)
+    algA = 1;
+  else
+    algA = 0;
+  end
+
+  figure(figh(1))
+  clf
+  plot(TB(1:end),xB(1:3, 1:end), 'linewidth', 3);
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  title('Master gyro')
+
+  if algA
+    wb2sim = zeros(3, size(xB,2));
+    for i=1:size(xB,2)
+      [res, ysim] = residual_twogyro(zeros(6,1), xB(:,i), qBf(:,i), fixq12);
+      %%[res, ysim] = residual_twoimu(zeros(12,1), xB(1:12,i), qBf(:,i), p12);
+      wb2sim(:,i) = ysim(4:6);
+    end
+  else
+
+    if fixp12
+      if fixq12
+	pqfix = [p12; 1];
+      else
+	pqfix = p12;
+      end
+    else
+      if fixq12
+	pqfix = [1];
+      else
+	pqfix = 0;
+      end
+    end
+
+    wb2sim = zeros(3, size(xB,2));
+    accb2sim = zeros(3, size(xB,2));
+    for i=1:size(xB,2)
+      [res, ysim] = residual_twoimu(zeros(12,1), xB(:,i), qBf(:,i), pqfix);
+      %%[res, ysim] = residual_twoimu(zeros(12,1), xB(1:12,i), qBf(:,i), p12);
+      wb2sim(:,i) = ysim(7:9);
+      accb2sim(:,i) = ysim(10:12);
+    end
+  end
+
+  figure(figh(2))
+  clf
+  plot(TB, wb2sim', 'linewidth', 3)
+  hold on
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:));
+  title('Slave gyro')
+
+  if (~algA)
+    figure(figh(3))
+    clf
+    plot(TB(1:end-3),xB(7:9, 1:end-3), 'linewidth', 3);
+    hold on
+    plot(pd.pln.timeCal(bfr:mxfr), pd.pln.accCal(bfr:mxfr,:))
+    title('Master acc')
+
+    figure(figh(4))
+    clf
+    plot(TB, xB(4:6,:)', 'linewidth', 3)
+    hold on
+    fs = 102.4;
+    alpha = centraldiff(pd.pln.gyroCal, fs);
+    plot(pd.pln.timeCal(bfr:mxfr), alpha(bfr:mxfr,:)')
+    title('Master angular acc')
+
+
+    figure(figh(5))
+    clf
+    plot(TB, accb2sim', 'linewidth', 3)
+    hold on
+    plot(pd.prn.timeCal(bfr:mxfr), pd.prn.accCal(bfr:mxfr,:));
+    title('Slave acc')
+end

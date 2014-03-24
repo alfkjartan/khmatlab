@@ -1,0 +1,9 @@
+function m = combine_model(mroot, m1, m2)
+%%  m = combine_model(mroot, m1, m2)
+%% Will make m1 and m2 branches of model mroot. If mroot is empty, then a simple model
+%% with no degrees of freedom and no mass will be generated to hold the two branches.
+
+%% Kjartan Halvorsen
+%% 2013-07-16
+
+ 

@@ -1,0 +1,301 @@
+
+<style>
+
+body
+{
+	color:gray;
+	font-family:georgia;
+	max-width:800px;
+}
+
+h1
+{
+	color:black;
+}
+
+h2
+{
+	color:blue;
+}
+
+h3
+{
+	color:green;
+}
+
+tt, pre
+{
+	color:red;
+	font-weight:bold;
+}
+
+</style>
+
+
+<h1>Panel</h1>
+
+<h2>Overview</h2>
+
+<p>Panel is a Matlab Utility that simplifies laying out multi-panel figures. It has the following advantages over <tt>subplot</tt>:
+
+<ul>
+
+<li>Precise control over layout, leading to optimal use of space (subplot often generates figures that are unusable in print work).</li>
+<li>Easy rearrangement of panels in figure, as opposed to painful <tt>subplot</tt> renumbering operation.</li>
+<li>Figure-wide control of rendering (font size, face, etc.).</li>
+<li>Work in physical units (millimetres, inches, etc.) as well as fractions.</li>
+<li>WYSIWYG rendering to image files sized for your publication target - camera-ready artwork direct from Matlab.</li>
+<li>(Bonus) Engineering scale labelling built in.</li>
+
+</ul>
+
+<p>Below is the Quick Reference guide (if you know what you're doing) and the User Guide (if you don't). In addition, some demos are included: try <tt>panel_demo_1</tt> to get started.
+
+<p>It was authored by Ben Mitch, and can be found at <a href='http://tinyurl.com/6mt9yl'>Mathworks Matlab Central File Exchange</a>.
+
+
+
+<h2>Quick Reference</h2>
+
+Methods - see "help panel/&lt;method>" for individual help.
+
+<pre>
+p = panel(...); (create new root panel)
+q = p.pack(...); (commit as a parent panel, and return new panel)
+a = p.select; (commit as an axis panel, and make axis current)
+p.render;
+p.export(...);
+</pre>
+
+Properties (read only).
+
+<pre>
+p.figure (handle of associated figure)
+p.axis (handle of associated axis, if there is one)
+p.children (list of panel's children)
+</pre>
+
+Properties (read/write).
+
+<pre>
+p.axismargin, p.parentmargin (see above)
+p.edge (packing edge, one of 'l', 't', 'r', or 'b')
+p.fontname, p.fontsize, p.fontweight (self-explanatory)
+p.title
+p.xlabel, p.ylabel (text of those labels - "$" is replaced by eng. suffix)
+p.xscale, p.yscale (engineering scale for those axes)
+p.autorender
+p.units
+p.rootmargin
+</pre>
+
+
+
+<h2>User Guide</h2>
+
+<h3>A single panel</h3>
+
+<p>First, the "root panel" is attached to a Figure:
+
+<pre>
+p = panel(gcf);
+</pre>
+
+<p>Every panel, including the root panel, is created as an "uncommitted panel" - it can then be committed as either a "parent panel" (a panel with "child panels" packed into it) or an "axis panel" (a panel that corresponds one-to-one to a Matlab axis object. To commit a panel as an axis panel, just select it:
+
+<pre>
+select(p);
+</pre>
+
+<p>The axis appears, and you can plot into it in the usual way. To set title and labels, use:
+
+<pre>
+p.title = '...';
+p.xlabel = '...';
+p.ylabel = '...';
+</pre>
+
+<p>This will ensure that rendering metric changes are reflected in these features, as well, and allows automatic margin calculation.
+
+<h3>Packing multiple panels into one parent panel</h3>
+
+<p>Instead of selecting the root panel as an axis panel, we can pack a couple of child panels into it:
+
+<pre>
+p = panel(gcf);
+pA = p.pack();
+pB = p.pack();
+</pre>
+
+<p>(note that we had to recreate the panel "p" - we can't pack into a panel that is already committed as an axis panel). We can then select, and plot into, each of the sub-panels when we see fit (see <tt>panel_demo_1</tt>).
+
+<h3>Packing grandchildren, etc.</h3>
+
+<p>This packing process can be continued indefinitely (until the renderer starts giving warnings, anyway). For instance, we can pack down a bit, then right a bit, then down a bit:
+
+<pre>
+p = panel(gcf);
+pA = p.pack(30);
+pB = p.pack();
+pB.edge = 'l'; % pack on the left edge (default is to pack on the top edge)
+pBA = pB.pack(25); % use leftmost 25% of the space for BA
+pBB = pB.pack(25); % use next 25% of the space for BB
+pBC = pB.pack(); % use remaining for BC
+pBBA = pBC.pack(1/3); % values less than 1 are assumed to be fractions rather than percentages
+pBBB = pBC.pack(1/3); % you don't have to use the 'remainder' space
+pBBC = pBC.pack(1/3); % here, we've used all the space explicitly anyway
+</pre>
+
+<p>Note the use of percentages and fractions, unambiguously, since 1% or less is not a plausible packing size (see <tt>panel_demo_2</tt>).
+
+<h3>The Panel Box Model</h3>
+
+<div style='font-size:90%; color:black; margin-bottom:8px'>
+<img src='boxmodel.png'><br>
+The figure shows a Panel's "outside box" (black), its "margin", and its "inside box" (blue). The outside boxes of three panels packed into the main panel are shown in red.
+</div>
+
+<p>The root panel "owns" the entire client area of the figure. In the same way, each new panel owns some region of the associated figure. This owned region is the panel's "outside box". The panel's "inside box" is defined as the panel's outside box, shrunk on each side by the panel's "margin". The panel renders content into the inside box: either, its axis fills the inside box exactly, or its children are assigned outside boxes such that together they fill its inside box.
+
+<p>"axismargin" and "parentmargin" are two of a panel's inherited properties (if you don't set them, they are inherited from the panel's parent). The root panel inherits from the "default panel", i.e. if unset it uses default parameters (defined in <tt>subsref.m</tt>). A parent panel's margin is given by "parentmargin"; an axis panel's margin is given by "axismargin".
+
+<p>For example:
+
+<pre>
+p = panel(gcf);
+pA = p.pack();
+pB = p.pack();
+p.parentmargin = [30 0 0 0]; % affects all children of "p"
+pB.axismargin = [30 30 20 20]; % affects pB only
+</pre>
+
+<p>Margins are all specified in the form [left bottom right top] (widths), in the units that are current for the root panel.
+
+
+<h3>Units</h3>
+
+All distance metrics (currently, margins) are read/written in the current units of the root panel. To view/change these units, use:
+
+<pre>
+disp(p.units);
+p.units = 'mm';
+pB.axismargin = [30 30 20 20];
+p.units = 'in';
+disp(pB.axismargin)
+</pre>
+
+Note that the displayed margin is in inches, though it was set in millimetres. See <tt>panel_demo_3</tt> for more.
+
+
+
+<h3>Root Margin</h3>
+
+The root margin accounts for the fact that axis panels overflow slightly to the right and to the top, and this is unaccceptable at the root, since this overflow renders off-figure. By default, a small root margin (5mm top and right) is set. If it is not suitable, you can change it. For example:
+
+<pre>
+p.rootmargin = [0 0 5 5]; % this is the default
+</pre>
+
+See <tt>panel_demo_5</tt> for a full example.
+
+
+<h3>Panel Titles</h3>
+
+Individual panel titles are usually frowned upon in print journals, and Panel assumes there will be none, by default. However, you have full control using Panel, and can make room for panel titles if you want to. For example:
+
+<pre>
+p = panel(gcf);
+pA = p.pack(30);
+pB = p.pack();
+pB.title = ['my panel title'];
+pB.axismargin = [15 15 0 5]; % add a little extra top margin to accomodate the title
+</pre>
+
+See <tt>panel_demo_7</tt> for a full example.
+
+
+
+<h3>Engineering Scales</h3>
+
+As a bonus, unrelated to the main function of panel, engineering scaling is offered. By setting:
+
+<pre>
+p.xscale = 'k';
+</pre>
+
+for example, the scale of the x axis is changed to be in <i>kilo</i> units, rather than units. As a result, the numbers against the ticks will get a thousand times smaller (and nothing else will change). To have this setting reflected in the associated axis label, see the section below. Alternatively, you can set:
+
+<pre>
+p.xscale = '?';
+</pre>
+
+to let Panel automatically choose the correct engineering scale for your data. For an example, see <tt>panel_demo_6</tt>.
+
+
+
+<h3>Titles and Axis Labels</h3>
+
+You should set panel titles and axis labels through Panel, rather than through Matlab's standard <tt>title</tt> and <tt>xlabel</tt> and <tt>ylabel</tt> commands, so that they can be included in the rendering process. Use:
+
+<pre>
+p = panel(...);
+select(p);
+p.title = 'my panel title';
+p.xlabel = 'my x axis label';
+p.ylabel = 'my y axis label';
+</pre>
+
+Wherever you use the symbol "$" in an axis label, it will be replaced by the engineering scale suffix for that axis (if engineering scale is not used, it is replaced with an empty string). For example:
+
+<pre>
+p.xlabel = 'time ($s)';
+</pre>
+
+
+<h3>Fonts</h3>
+
+You can control the font size, face and weight for individual panels, if you choose. However, you would more normally want to control these figure-wide. Just set them on the root panel:
+
+<pre>
+p.fontname = 'times';
+p.fontsize = 14;
+p.fontweight = 'bold';
+</pre>
+
+
+
+<h3>Autorender</h3>
+
+<p>By default, the root panel is re-rendered (re-drawn) whenever you change anything of any of its descendants. For rapid prototyping of your layout, this is ideal (you see your changes as soon as you make them). However, for complex layouts, rendering can take a little time, and may get done many times if you make many changes whilst building your panel. In this case, you can improve performance by turning off "autorender", and rendering the root panel manually once you're finished:
+
+<pre>
+p = panel(...);
+p.autorender = false;
+...
+render(p);
+</pre>
+
+
+
+<h3>Export</h3>
+
+Finally, to export to a camera-ready image, see <tt>help export</tt>. In short:
+
+<pre>
+% prepare your whole figure
+p = panel();
+...
+export(p, 'my_rendered_figure.png');
+</pre>
+
+Your main steps would be:
+
+<ol>
+<li>Identify your target area (e.g. "one third of the height of one column of a two-column A4 page").
+<li>Decide on orientation, output resolution (DPI), or leave these at defaults.
+<li>Marvel at the way it actually looks like you thought it would (well, your mileage may vary... let me know :).
+</ol>
+
+See <tt>panel_demo_4</tt> for a full example.
+
+

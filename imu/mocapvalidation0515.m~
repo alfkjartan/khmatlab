@@ -1,0 +1,658 @@
+%% Script for validation of sensor node imu against motion capture.
+%% Data collected on 2012-05-15
+
+%% Kjartan Halvorsen
+%% 2012-05-18
+
+parts = [1 2 3 4 5];
+do_parts = [5];
+
+if ismember(1, do_parts)  
+  %% First part of validation. Calibration.
+
+  synchronize = 0;
+  checkAcc = 0;
+
+  %% Load tracked angular velocity
+  %% load PRNyPLNz  % Loads wx, wy, wz
+
+  prefix = "data0515";
+  dta = {"prnyplnz";"prnzplny1";"bothx1"; "bothx2"};
+
+  for i = 1:length(dta)
+  %for i = 1:2
+    str = dta{i};
+    %% Load raw, but synced sensor data
+    imud = load([prefix, str]);
+    fn_mc = "prnyplnz1.tsv";
+    fn_sync = "PRNyPLNz1_sync"
+
+    pd = getfield(imud, str);
+    [pd, md] = calibrate_validationdata(pd);
+    %%[pd, md] = calibrate_validationdata(pd, fn_mc, fn_sync);
+    %%[pd, md] = calibrate_validationdata(imud.prnyplnz, fn_mc);
+
+
+    figure(1)
+    clf
+    plot(pd.pln.timeCal, pd.pln.gyroCal, 'linewidth', 3)
+    hold on
+    plot(pd.prn.timeCal, pd.prn.gyroCal)
+    title(str)
+
+    figure(2)
+    clf
+    plot(pd.pln.timeCal, pd.pln.accCal, 'linewidth', 3)
+    hold on
+    plot(pd.prn.timeCal, pd.prn.accCal)
+    title(str)
+
+    keyboard
+  end
+
+end
+
+
+if ismember(2, do_parts)  
+  %% Second part of validation. Test tracking algorithm A and B.
+
+  %% Load raw sensor data
+  %% Load raw, but synced sensor data
+  imud = load("data0515prnyplnz");
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync"
+
+
+  [pd, md] = calibrate_validationdata(imud.prnyplnz, fn_mc, fn_sync);
+  %%[pd, md] = calibrate_validationdata(imud.prnyplnz, fn_mc);
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+  pRL = [0; -0.05; 0];
+  ntfrs = 4000;
+  %% Check the initial rotation.
+%%  testinitialrotation(pd, ntfrs, qRL, pRL);
+ %% keyboard
+
+  bandwidth = 1;
+  mxfr = min(size(pd.prn.timeCal, 1), size(pd.pln.timeCal, 1));
+  mxfr = 2000;
+
+  bfr = 250;
+  bandwidth = 0.1;
+  [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL);
+
+  bandwidth = 0.1;
+  [xB,TB,qB,qBf,pB] = track_rotation_B(pd.pln.timeCal(bfr:mxfr),
+				   pd.pln.gyroCal(bfr:mxfr,:)', ...
+				   pd.pln.accCal(bfr:mxfr,:)', ...
+				   pd.prn.timeCal(bfr:mxfr), ...
+				   pd.prn.gyroCal(bfr:mxfr,:)', 
+				   pd.prn.accCal(bfr:mxfr,:)', ...
+				   bandwidth, qRL, pRL);
+
+
+  fighs = [1 2 3 5 6];
+  plot_imu_results(TB, xB, qBf, pd, bfr, mxfr, fighs);
+
+
+  errangleB = zeros(length(TA),1);
+  errangleA = zeros(length(TA),1);
+  errangle = zeros(length(TA),1);
+  qstart = [0;0;0;1];
+  qAi = qstart;
+  for i = 1:length(errangle)
+    qAi = qmult(qAi, qexp(1/102.4*xB(1:3,i)));
+    eqf = qmult(qAi, qstart);
+    errangle(i) = 2*acos(eqf(4))*180/pi;
+    eqf = qmult(qA(:,i), qstart);
+    errangleA(i) = 2*acos(eqf(4))*180/pi;
+    eqf = qmult(qB(:,i), qstart);
+    errangleB(i) = 2*acos(eqf(4))*180/pi;
+  end
+
+  figure(4)
+  clf
+  plot(TA(1:end), errangle(1:end))
+  hold on
+  plot(TB(1:end), errangleA(1:end), 'm')
+  plot(TB(1:end), errangleB(1:end), 'r')
+
+
+  figure(7)
+  clf
+  subplot(211)
+  plot(TB, xB(13:15,:)')
+  subplot(212)
+  plot(TB, qBf')
+
+  keyboard
+end
+
+if ismember(3, do_parts)  
+  %% Third part of validation. Test that the orientation comes back to
+  %% the same after complete revolution of the record player
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+  rotations =   [200 890 1800 2390 3344 4250 5055 5635 6467 7242 8087];
+
+  % plot data to identify start and stop of each revolution.
+  figure(1)
+  clf
+  plot(pd.pln.gyroCal);
+
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+
+
+  bandwidth = 0.1;
+
+  err_rot = zeros(length(rotations)-1, 1);
+
+  for rot = 1:length(rotations)-1
+    bfr = rotations(rot);
+    mxfr = rotations(rot+1);
+
+    [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL0);
+
+    err_rot(rot) = 2*acos(qA(4,end))*180/pi;
+  end
+
+
+  figure(1)
+  clf
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:))
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  plot(TA(1:end-3),xA(1:3,1:end-3)');
+  
+
+  angle = 2*acos(qA(4,:))*180/pi;
+  
+  figure(2)
+  clf
+  plot(angle)
+
+
+end
+
+if ismember(4, do_parts)  
+  %% Test to identify gravitational acceleration from mean acceleration
+  %% of cyclic movement
+  rotations =   [200 890 1800 2390 3344 4250 5055 5635 6467 7242 8087];
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+  %% known gravitational acceleration in body frame of the
+  %% master node (PLN)
+  g0 = [0;0;-9.825];
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+  bandwidth = 0.1;
+
+  g_vec = zeros(3, length(rotations)-1);
+  err_g_magn = zeros(length(rotations)-1, 1);
+  err_g_dir = zeros(length(rotations)-1, 1);
+
+  for rot = 1:length(rotations)-1
+    bfr = rotations(rot);
+    mxfr = rotations(rot+1);
+
+    [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL0);
+
+    acc1 = pd.pln.accCal(bfr:mxfr,:);
+    g_vec(:,rot) = gravity_acc(acc1, qA);
+    err_g_magn = norm(g_vec(:,rot) - g0);
+    err_g_dir = acos(g0'*g_vec(:,rot)/norm(g0)/norm(g0_vec(:,rot)));
+  end
+
+
+  figure(1)
+  clf
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:))
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  plot(TA(1:end-3),xA(1:3,1:end-3)');
+  
+
+  figure(2)
+  clf
+  subplot(211)
+  plot(err_g_magn);
+  ylabel('Error in magntude of g', 'fontsize', fntsz)
+  subplot(212)
+  plot(err_g_dir);
+  ylabel('Error in direction of g', 'fontsize', fntsz)
+  xlabel('Revolution', 'fontsize', fntsz)
+
+
+end
+
+if ismember(5, do_parts)  
+  %% Test accuracy in tracking on kayaking data
+
+  imud = load("data0515d200w120bpm");
+  fn_mc = "Dennis200W120bpm.tsv";
+  fn_sync = "Dennis200W120bpm_sync";
+
+  [pd, md, time_mc] = calibrate_validationdata(imud.dennis200w120bpm, fn_mc, fn_sync);
+  %%[pd, md] = calibrate_validationdata(imud.prnyplnz, fn_mc);
+  
+  %% Determine start of each cycle by the peak x-coordinate of the left
+  %% paddel marker.
+  pL = extractmarkers(md, "paddel-L");
+  xpeaks = peakdet(pL(:,1), 0.005);
+  figure(3)
+  clf
+  plot(pL(:,1));
+  hold on
+  yl = get(gca, 'ylim');
+  for p=1:size(xpeaks,1)
+    plot(xpeaks(p,1)*[1 1], yl, 'r')
+  end
+
+  nfrs = size(md{2}, 1);
+  startfr = 1000;
+  endfr = ceil(median(xpeaks(:,1)));
+  endfr = ceil(median(xpeaks(:,1))) - 1000;
+  endfr = xpeaks(end-4,1);
+  startcycles = intersect(xpeaks(:,1), 3000:endfr);
+
+    
+  starttime = time_mc(startfr);
+  startfr_wl = find(pd.pln.timeCal < starttime);
+  startfr_wl = startfr_wl(end) + 1;
+  endtime = time_mc(endfr);
+  endfr_wl = find(pd.pln.timeCal < endtime);
+  endfr_wl = endfr_wl(end) + 1;
+
+  %% Track paddel from wireless data
+  %% Starting guess of the orientation between the imus
+  q121 = quaternion([0;0;1], pi);
+  qbrot = quaternion([1;0;0], pi/5);
+  q21 = qmult(q121,qbrot);
+  q12 = qinv(q21);
+  p12 = [-0.47; -0.11; 0];
+
+
+  testinitrot = 0;
+
+  if (testinitrot)
+    ntfrs = 4000;
+    %% Check the initial rotation.
+    testinitialrotation(pd, ntfrs, q12, p12);
+    keyboard
+  end
+
+  timeL = pd.pln.timeCal(startfr_wl:endfr_wl);
+  gyroL = pd.pln.gyroCal(startfr_wl:endfr_wl,:);
+  accL = pd.pln.accCal(startfr_wl:endfr_wl,:);
+  timeR = pd.prn.timeCal(startfr_wl:endfr_wl);
+  gyroR = pd.prn.gyroCal(startfr_wl:endfr_wl,:);
+  accR = pd.prn.accCal(startfr_wl:endfr_wl,:);
+
+  clipdata= 500*pi/180;
+  if clipdata
+    gyroL(find(gyroL>clipdata)) = nan;
+    gyroL(find(gyroL<-clipdata)) = nan;
+    gyroR(find(gyroR>clipdata)) = nan;
+    gyroR(find(gyroR<-clipdata)) = nan;
+  end
+
+  fixp12 = 0;
+  fixq12 = 0;
+  bandwidth = 1;
+  [xB, TB, qB, q12B] = track_rotation_B(timeL, gyroL', accL', ...
+					timeR, gyroR', accR', ...
+					bandwidth, q12, p12, fixp12, fixq12);
+
+  [xA, TA, qA, q12A] = track_rotation_A(timeL, gyroL', ...
+					timeR, gyroR', ...
+					bandwidth, q12, fixq12);
+
+  fighs = [1 2 3 5 6];
+  plot_imu_results(TB, xB, q12B, pd, startfr_wl, endfr_wl, fighs);
+
+  %% Find starts of cycles in wireless data
+  complete_cyclesA = zeros(size(startcycles));
+  complete_cyclesB = zeros(size(startcycles));
+  complete_cyclesref = zeros(size(startcycles));
+  for c = 1:length(startcycles);
+    before =  find(TA < time_mc(startcycles(c)));
+    complete_cyclesA(c) = before(end);
+    before =  find(TB < time_mc(startcycles(c)));
+    complete_cyclesB(c) = before(end);
+    before =  find(pd.pln.timeCal < time_mc(startcycles(c)));
+    complete_cyclesref(c) = before(end);
+  end
+  
+  figure(7)
+  clf
+  subplot(211)
+  plot(TB, xB(13:15,:)')
+  subplot(212)
+  plot(TB, q12B')
+  hold on
+  plot(TA, q12A', 'linewidth', 3)
+
+  respth = date;
+  mkdir(respth);
+
+  print(fullfile(respth,"qerrorABsa.tex"), "-depslatexstandalone")
+
+  offsA = complete_cyclesA(1)-1;
+  offsB = complete_cyclesB(1)-1;
+  offsref = complete_cyclesref(1)-1;
+  TAc = TA(complete_cyclesA(1):complete_cyclesA(end));
+  TBc = TB(complete_cyclesB(1):complete_cyclesB(end));
+  Tref = pd.pln.timeCal(complete_cyclesref(1):complete_cyclesref(end));
+  errangleB = zeros(length(TBc),1);
+  errangleA = zeros(length(TAc),1);
+  errangle = zeros(length(Tref),1);
+  qref = zeros(4, length(Tref));
+  qstartA = qinv(qA(:,1+offsA));
+  qstartB = qinv(qB(:,1+offsB));
+  qBi = [0;0;0;1];
+  qstart = qBi;
+  for i = 1:length(errangleA)
+    eqf = qmult(qA(:,i+offsA), qstartA);
+    errangleA(i) = 2*acos(eqf(4))*180/pi;
+  end
+  for i = 1:length(errangle)
+    qBi = qmult(qBi, qexp(1/102.4*pd.pln.gyroCal(startfr_wl+i+offsref,:)'));
+    qref(:,i) = qBi;
+    eqf = qmult(qBi, qstart);
+    errangle(i) = 2*acos(eqf(4))*180/pi;
+  end
+  for i = 1:length(errangleB)
+    eqf = qmult(qB(:,i+offsB), qstartB);
+    errangleB(i) = 2*acos(eqf(4))*180/pi;
+  end
+
+  figure(8)
+  clf
+  plot(Tref(1:end), errangle(1:end),'b', 'linewidth', 3)
+  hold on
+  plot(TAc(1:end), errangleA(1:end),'m', 'linewidth', 3)
+  plot(TBc(1:end), errangleB(1:end), 'r', 'linewidth', 3)
+  yl = get(gca, 'ylim');
+  for c = complete_cyclesA
+    plot(TA([c c]), yl, 'c');
+  end
+  plot(TBc, 10*xB(1:3, complete_cyclesB(1):complete_cyclesB(end))')
+
+  %% Compute the error in orientation after a full revolution
+  errrevolB = zeros(length(complete_cyclesB)-1,1);
+  errrevolA = zeros(length(complete_cyclesA)-1,1);
+  errrevol_ref = zeros(length(complete_cyclesref)-1,1);
+  q0A = qinv(qA(:,complete_cyclesA(1)));
+  q0B = qinv(qB(:,complete_cyclesB(1)));
+  q0_ref = qinv(qref(:,complete_cyclesref(1)));
+  %%keyboard
+  for i = 2:length(complete_cyclesA)
+    endr = complete_cyclesB(i);
+    eqf = qmult(qB(:,endr), q0B);
+    eqa = 2*acos(eqf(4))*180/pi
+    errrevolB(i-1) = abs(eqa);
+    q0B = qinv(qB(:,endr));
+
+    endr = complete_cyclesA(i);
+    eqf = qmult(qA(:,endr), q0A);
+    eqa = 2*acos(eqf(4))*180/pi
+    errrevolA(i-1) = abs(eqa);
+    q0A = qinv(qA(:,endr));
+
+    %%if (~clipdata)
+    endr = complete_cyclesref(i);
+    eqf = qmult(qref(:,endr), q0_ref);
+    eqa = 2*acos(eqf(4))*180/pi;
+    errrevol_ref(i-1) = abs(eqa);
+    q0_ref = qinv(qref(:,endr));
+    %%end
+  end
+  figure(4)
+  clf
+  if 1
+    cind = (1:length(errrevolB));
+    plot(cind, errrevolB, 'rx', 'markersize', 16)
+    hold on
+    plot(cind, errrevolA, 'mx', 'markersize', 16)
+    plot(cind, errrevol_ref, 'bx', 'markersize', 16)
+  
+    box off
+    set(findobj(gca, 'type', 'line'), 'linewidth', 3)
+    set(findobj(gcf, '-property', 'fontsize'), 'fontsize', 14)
+    ylabel('Degrees', 'fontsize', 14)
+    xlabel('Revolution', 'fontsize', 14)
+    %%if clipdata
+      legend('Algorithm B', 'Algorithm A')
+    %%else
+    %%  legend('Algorithm B', 'Algorithm A', 'LP filter')
+    %%end
+    set(gca, 'xlim', [0.5 length(errrevolB)+0.2])
+    %%set(gca, 'xtick', [1 2 3 4])
+  else
+    legh = boxPlot(cat(2, erevolA, erevolB, erevol_ref));
+  end    
+
+
+  markers = {'paddel-L', 'front-L', 'back-L', 'lateral-L', ...
+	     'paddel-R', 'front-R', 'back-R', 'lateral-R'};
+
+  %% Set missing values to nan
+  md{2}(find(md{2} == 0)) = nan;
+
+  keyboard
+  [q_mc, w_mc, alpha_mc, d_mc, v_mc, a_mc, y_mc, ypred_mc, r] = \
+      track_rigidbody(md, markers, bw);
+
+
+
+end
+
+if ismember(6, do_parts)  
+  %% Check drift in gyro
+  
+  imud = load("data0515d200w120bpm");
+  fn_mc = "Dennis200W120bpm.tsv";
+  fn_sync = "Dennis200W120bpm_sync";
+
+  [pd] = calibrate_validationdata(imud.dennis200w120bpm);
+
+  figure(1)
+  clf
+  plot(pd.pln.timeCal, pd.pln.gyroCal)
+  title('Left gyro')
+
+  figure(2)
+  clf
+  clf
+  plot(pd.prn.timeCal, pd.prn.gyroCal)
+  title('Right gyro')
+
+  plmean = mean(pd.pln.gyroCal)
+  prmean = mean(pd.prn.gyroCal)
+end 
+
+if ismember(7, do_parts)  
+  %% Track dennis200w120bpm
+  
+  imud = load("data0515d200w120bpm");
+  fn_mc = "Dennis200W120bpm.tsv";
+  fn_sync = "Dennis200W120bpm_sync";
+  
+  [pd, md, time_mc] = calibrate_validationdata(imud.dennis200w120bpm, fn_mc, fn_sync);
+
+  markers = {'paddel-L', 'front-L', 'back-L', 'lateral-L', ...
+	     'paddel-R', 'front-R', 'back-R', 'lateral-R'};
+
+  %% Set missing values to nan
+  md{2}(find(md{2} == 0)) = nan;
+
+  bw = 1;
+  [q_mc, w_mc, alpha_mc, d_mc, v_mc, a_mc, y_mc, ypred_mc, r] = \
+      track_rigidbody(md, markers, bw);
+
+  figure(3)
+  clf
+  plot(time_mc, w_mc')
+
+
+  %% Plot markers front-L and front-R projected onto direction given by
+  %% paddle shaft
+  paddelL = extractmarkers(md, 'paddel-L');
+  paddelR = extractmarkers(md, 'paddel-R');
+  frontL = extractmarkers(md, {'front-L'});
+  
+  v = frontL-paddelL;
+  vnorm = sqrt(sum(v.^2, 2));
+  v1 = v(1,:)'/vnorm(1);
+
+  axisangle = zeros(size(vnorm));
+  for i=1:length(vnorm)
+    axisangle(i) = acos(v(i,:)*v1/vnorm(i));
+  end
+
+  figure(4)
+  clf
+  plot(time_mc, axisangle)
+
+  %% Determine start of each cycle by the peak x-coordinate of the left
+  %% paddel marker.
+  pL = extractmarkers(md, "paddel-L");
+  xpeaks = peakdet(pL(:,1), 0.005);
+  figure(3)
+  clf
+  plot(pL(:,1));
+  hold on
+  yl = get(gca, 'ylim');
+  for p=1:size(xpeaks,1)
+    plot(xpeaks(p,1)*[1 1], yl, 'r')
+  end
+
+  nfrs = size(md{2}, 1);
+  startfr = 1000;
+  startcycles = intersect(xpeaks(:,1), 3000:nfrs);
+  %% Find starts of cycles in wireless data
+  complete_cyclesL = zeros(size(startcycles));
+  complete_cyclesR = zeros(size(startcycles));
+  for c = 1:length(startcycles);
+    before =  find(pd.pln.timeCal < time_mc(startcycles(c)));
+    complete_cyclesL(c) = before(end);
+    before =  find(pd.prn.timeCal < time_mc(startcycles(c)));
+    complete_cyclesR(c) = before(end);
+  end
+
+  w_mc_mean = mean(w_mc(:,startcyles(1):startcycles(end))')
+  wL_mean = \
+      mean(pd.pln.gyroCal(complete_cyclesL(1):complete_cyclesL(end),:))
+  wR_mean = \
+      mean(pd.prn.gyroCal(complete_cyclesL(1):complete_cyclesL(end),:))
+
+
+  time_mcc = time_mc(startcycles(1):startcycles(end));
+  offs = startcycles(1)-1;
+  errangle = zeros(length(time_mcc),1);
+  errv = zeros(3,length(time_mcc));
+  qstart = qinv(q_mc(:,startcycles(1)));
+  qi = q_mc(:, startcycles(1));
+  dt = 1/200;
+  for i = 1:length(errangle)
+    eqf = qmult(qi, qstart);
+    qi = qmult(qi, qexp(dt*w_mc(1:3,i+offs)));
+    errangle(i) = 2*acos(eqf(4))*180/pi;
+    errv(:,i) = eqf(1:3);
+  end
+
+  intervL = complete_cyclesL(1):complete_cyclesL(end);
+  offs = intervL(1)-1;
+  errangleL = zeros(length(intervL),1);
+  errvL = zeros(3,length(intervL));
+  qstart = [0;0;0;1];
+  qi = qstart;
+  dt = 1/102.4;
+  for i = 1:length(errangleL)
+    eqf = qmult(qi, qstart);
+    qi = qmult(qi, qexp(dt*pd.pln.gyroCal(i+offs,:)'));
+    errangleL(i) = 2*acos(eqf(4))*180/pi;
+    errvL(:,i) = eqf(1:3);
+  end
+
+  intervR = complete_cyclesR(1):complete_cyclesR(end);
+  offs = intervR(1)-1;
+  errangleR = zeros(length(intervR),1);
+  errvR = zeros(3,length(intervR));
+  qstart = [0;0;0;1];
+  qi = qstart;
+  dt = 1/102.4;
+  for i = 1:length(errangleR)
+    eqf = qmult(qi, qstart);
+    qi = qmult(qi, qexp(dt*pd.prn.gyroCal(i+offs,:)'));
+    errangleR(i) = 2*acos(eqf(4))*180/pi;
+    errvR(:,i) = eqf(1:3);
+  end
+
+  figure(4)
+  clf
+  plot(time_mcc, errangle)
+  hold on
+  yl = get(gca, 'ylim');
+  for c = startcycles
+    plot(time_mc([c c]), yl, 'c');
+  end
+  plot(pd.pln.timeCal(intervL), errangleL, 'r')
+  plot(pd.prn.timeCal(intervR), errangleR, 'g')
+
+  figure(5)
+  clf
+  plot(time_mcc, errv')
+  hold on
+  yl = get(gca, 'ylim');
+  for c = startcycles
+    plot(time_mc([c c]), yl, 'c');
+  end
+
+  figure(6)
+  clf
+  yl = get(gca, 'ylim');
+  hold on
+  for c = startcycles
+    plot(time_mc([c c]), yl, 'c');
+  end
+  plot(pd.pln.timeCal(intervL), errvL', 'linewidth', 2)
+  plot(pd.prn.timeCal(intervR), errvR', 'linewidth', 3)
+
+end

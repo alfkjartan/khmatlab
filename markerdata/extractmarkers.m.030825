@@ -1,0 +1,22 @@
+function mmd=extractmarkers(md,mnames,submnames)
+% mmd=extractmarkers(md,mnames,submnames)
+% Returns a matric containing the set of columns of md that corresponds
+% to the cell array of marker names submnames, which should be a subset of 
+% the cell array mnames.
+
+% Kjartan Halvorsen
+% 2000-11-08
+
+[cmn,mind,mindsub]=intersect(mnames,submnames);
+
+mindsub=mindsub(:);
+[mindsub,sortind]=sort(mindsub);
+mind=mind(sortind);
+mind=mind(:);
+
+ind=[];
+for m=mind'
+   ind=[ind (3*(m-1)+1):(3*m)];
+end
+
+mmd=md(:,ind);

@@ -1,0 +1,23 @@
+function X = sigmaq1(QP)
+%% X = sigmaq1(QP)
+%% Computes sigma points for the system with quaternion representation
+%% of rotation in elements 10:13 of the state vector.
+%%
+%% Input
+%%   QP    ->   The sum of the covariance matrices QP = Q+P
+%%
+%% Output
+%%   X     <-   sigma points (19 x 37)
+
+  n = size(M,1);
+  QP = P + Q;
+  A = chol(QP)';
+  [WM,WC,c] = ut_weights(size(M,1),alpha,beta,kappa);
+
+  X = zeros(n, 2*n+1);
+  AA = sqrt(c)*[A -A];
+  MM = repmat(M,1,size(X,2));
+  X(1:9,:) = MM(1:9,:) + cat(2, zeros(9,1), AA(1:9,:));
+  X(10:13,2:end) = qpropagate(MM(10:13,2:end), AA(10:12,:), 1); 
+  keyboard
+  X(14:end, :) = MM(14:end,:) + cat(2, zeros(6,1), AA(13:end,:));

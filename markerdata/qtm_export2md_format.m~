@@ -1,0 +1,13 @@
+function md = qtm_export2md_format(qtmm) 
+%  md = qtm_export2md_format(qtmm) 
+%
+% Transforms the exported marker data from qtm's format when
+% exporting directly to matlab to the format used in most of my
+% code:
+% md = { attributes, data }, with 
+% attributes = {key, value; key, value;...}, and
+% data = nfr x 3*nmarkers
+
+% Kjartan Halvorsen
+% 2008-01-23
+

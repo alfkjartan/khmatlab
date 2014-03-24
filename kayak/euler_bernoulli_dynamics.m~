@@ -1,0 +1,2 @@
+function [Mn, Md, w] = euler_bernoulli_dynamics(F, EI, a, b, c, m)
+

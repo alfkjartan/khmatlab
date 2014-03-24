@@ -1,0 +1,270 @@
+%% Script for validation of sensor node imu against motion capture.
+%% Data collected on 2012-05-15
+
+%% Kjartan Halvorsen
+%% 2012-05-18
+
+parts = [1 2 3 4 5];
+do_parts = [5];
+
+if ismember(1, do_parts)  
+  %% First part of validation. Calibration.
+
+  synchronize = 0;
+  checkAcc = 0;
+
+  %% Load tracked angular velocity
+  load PRNyPLNz  % Loads wx, wy, wz
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+
+  figure(1)
+  clf
+  plot(pd.prn.timeCal, pd.prn.gyroCal)
+  hold on
+  plot(pd.pln.timeCal, pd.pln.gyroCal)
+
+  figure(2)
+  clf
+  plot(pd.pln.timeCal, pd.pln.gyroCal)
+
+end
+
+
+if ismember(2, do_parts)  
+  %% Second part of validation. Test tracking algorithm A and B.
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+
+  bandwidth = 1;
+  mxfr = 3000;
+  bfr = 250;
+  bandwidth = 0.1;
+  [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL);
+  figure(1)
+  clf
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:))
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  plot(TA(1:end-3),xA(1:3,1:end-3)');
+
+  errangle = zeros(length(TA),1);
+  qLR = qinv(qRL0);
+  for i = 1:length(errangle)
+    eqf = qmult(qA(:,i), qLR);
+    errangle(i) = 2*acos(eqf(4))*180/pi;
+  end
+
+  figure(4)
+  clf
+  plot(TA(1:end-3), errangle(1:end-3))
+
+  mxfr = 1250;
+  bfr = 250;
+  bandwidth = 0.1;
+  [xB,TB,qB,qBf,pB] = track_rotation_B(pd.pln.timeCal(bfr:mxfr),
+				   pd.pln.gyroCal(bfr:mxfr,:)', ...
+				   pd.pln.accCal(bfr:mxfr,:)', ...
+				   pd.prn.timeCal(bfr:mxfr), ...
+				   pd.prn.gyroCal(bfr:mxfr,:)', 
+				   pd.prn.accCal(bfr:mxfr,:)', ...
+				   bandwidth, qRL, zeros(3,1));
+
+
+  figure(1)
+  plot(TB(1:end-3),xB(1:3, 1:end-3));
+
+  errangleB = zeros(length(TB),1);
+  qLR = qinv(qRL0);
+  for i = 1:length(errangleB)
+    eqf = qmult(qB(:,i), qLR);
+    errangleB(i) = 2*acos(eqf(4))*180/pi;
+  end
+
+  figure(4)
+  hold on
+  plot(TB(1:end-3), errangleB(1:end-3), 'r')
+
+
+  figure(2)
+  plot(TB(1:end-3), xB(13:15,1:end-3)')
+end
+
+if ismember(3, do_parts)  
+  %% Third part of validation. Test that the orientation comes back to
+  %% the same after complete revolution of the record player
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+  rotations =   [200 890 1800 2390 3344 4250 5055 5635 6467 7242 8087];
+
+  % plot data to identify start and stop of each revolution.
+  figure(1)
+  clf
+  plot(pd.pln.gyroCal);
+
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+
+
+  bandwidth = 0.1;
+
+  err_rot = zeros(length(rotations)-1, 1);
+
+  for rot = 1:length(rotations)-1
+    bfr = rotations(rot);
+    mxfr = rotations(rot+1);
+
+    [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL0);
+
+    err_rot(rot) = 2*acos(qA(4,end))*180/pi;
+  end
+
+
+  figure(1)
+  clf
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:))
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  plot(TA(1:end-3),xA(1:3,1:end-3)');
+  
+
+  angle = 2*acos(qA(4,:))*180/pi;
+  
+  figure(2)
+  clf
+  plot(angle)
+
+
+end
+
+if ismember(4, do_parts)  
+  %% Test to identify gravitational acceleration from mean acceleration
+  %% of cyclic movement
+  rotations =   [200 890 1800 2390 3344 4250 5055 5635 6467 7242 8087];
+
+  %% Load raw sensor data
+  fn_prn = "CalibrationBothPRNyPLNz_120515_122124_ft_PRN_raw.txt";
+  fn_pln = "CalibrationBothPRNyPLNz_120515_122124_ft_PLN_raw.txt";
+  fn_mc = "prnyplnz1.tsv";
+  fn_sync = "PRNyPLNz1_sync";
+
+
+
+  [pd, md] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, ...
+					    fn_sync);
+
+  %% known gravitational acceleration in body frame of the
+  %% master node (PLN)
+  g0 = [0;0;-9.825];
+
+  %% Quaternion that rotates measurements in PLN into PRN
+  qRL0 = quaternion([1;0;0], -pi/2);
+  %% Initial error
+  qRL = qmult(qRL0,qexp(pi*10/180*randn(3,1)));
+  bandwidth = 0.1;
+
+  g_vec = zeros(3, length(rotations)-1);
+  err_g_magn = zeros(length(rotations)-1, 1);
+  err_g_dir = zeros(length(rotations)-1, 1);
+
+  for rot = 1:length(rotations)-1
+    bfr = rotations(rot);
+    mxfr = rotations(rot+1);
+
+    [xA,TA,qA,qAf] = track_rotation_A(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:)',...
+				pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:)', ...
+				bandwidth, qRL0);
+
+    acc1 = pd.pln.accCal(bfr:mxfr,:);
+    g_vec(:,rot) = gravity_acc(acc1, qA);
+    err_g_magn = norm(g_vec(:,rot) - g0);
+    err_g_dir = acos(g0'*g_vec(:,rot)/norm(g0)/norm(g0_vec(:,rot)));
+  end
+
+
+  figure(1)
+  clf
+  plot(pd.prn.timeCal(bfr:mxfr), pd.prn.gyroCal(bfr:mxfr,:))
+  hold on
+  plot(pd.pln.timeCal(bfr:mxfr), pd.pln.gyroCal(bfr:mxfr,:))
+  plot(TA(1:end-3),xA(1:3,1:end-3)');
+  
+
+  figure(2)
+  clf
+  subplot(211)
+  plot(err_g_magn);
+  ylabel('Error in magntude of g', 'fontsize', fntsz)
+  subplot(212)
+  plot(err_g_dir);
+  ylabel('Error in direction of g', 'fontsize', fntsz)
+  xlabel('Revolution', 'fontsize', fntsz)
+
+
+end
+
+if ismember(5, do_parts)  
+  %% Test accuracy in tracking on kayaking data
+  dtapth = '/home/kjartan/Dropbox/IJSE-Cal/data/120515/free training';
+
+  fn_prn = fullfile(dtapth, "Dennis200W120bpm_120515_114636_ft_PRN_raw.txt");
+  fn_pln = fullfile(dtapth, "Dennis200W120bpm_120515_114636_ft_PLN_raw.txt");
+  fn_mc = "Dennis200W120bpm.tsv";
+  fn_sync = "Dennis200W120bpm_sync";
+
+  
+  keyboard
+  %%[pd, md, time_mc, fr0_pln, fr0_prn, fr0_mc] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc, fn_sync);
+  [pd, md, time_mc, fr0_pln, fr0_prn, fr0_mc] = get_calibrated_validationdata(fn_pln, fn_prn, fn_mc);
+
+  
+  markers = {'paddel-L', 'front-L', 'back-L', 'lateral-L', ...
+	     'paddel-R', 'front-R', 'back-R', 'lateral-R'};
+
+  %% Set missing values to nan
+  md{2}(find(md{2} == 0)) = nan;
+
+  [q_mc, w_mc, alpha_mc, d_mc, v_mc, a_mc, y_mc, ypred_mc, r] = track_rigidbody(md, markers, bw);
+
+
+end

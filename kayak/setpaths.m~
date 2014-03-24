@@ -1,0 +1,6 @@
+addpath('/home/kjartan/Dropbox/kayakmechanics/code/')
+addpath('/home/kjartan/Dropbox/kayaktracking/code/')
+addpath('/home/kjartan/Dropbox/kayaktracking/code/imu')
+addpath('/home/kjartan/Dropbox/kayaktracking/code/imu/markerdata')
+addpath('/home/kjartan/Dropbox/kayaktracking/code/imu/util')
+addpath('/home/kjartan/Dropbox/kayaktracking/code/imu/kinematik')

@@ -1,0 +1,21 @@
+function [mu] = sigma_mean_q1(XX)
+%%  [mu] = sigma_mean_q1(XX)
+%% Computes mean of sigma points for the system with quaternion representation
+%% of rotation in elements 10:13 of the state vector.
+%%
+%% Input
+%%   XX    ->   Sigma points (19 x 37)
+%%
+%% Output
+%%   mu     <-   The mean (19 x 37)
+%% Computes the mean of 
+
+
+   %% Compute the mean
+  mu = zeros(n,1);
+  for i=1:size(XX,2)
+    mu = mu + WM(i) * XX(:,i);
+  end
+
+  %% The quaternion part must be handled separately
+  mu(10:13) = qmean(XX(10:13,:),WM);
