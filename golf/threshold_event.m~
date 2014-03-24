@@ -1,0 +1,7 @@
+function fr = threshold_event(traj, dir, thr, frames_after)
+% Returns the first frame with threshold crossing
+
+% Kjartan Halvorsen 
+% 2010-03-24
+
+

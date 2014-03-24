@@ -1,0 +1,8 @@
+function gm = build_golf_test_model()
+%% Returns a test model. Basically one link branching into two planar linkages
+%% with a common frame for the last link.
+
+%% Kjartan Halvorsen
+%% 2013-06-14
+
+

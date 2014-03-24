@@ -1,0 +1,43 @@
+function [m,mnames, xpoints]=sim_model(km,states, extrapoints)
+%  [m, mnames, xpoints]=sim_model(km,states,extrapoints)
+% Returns the motion of the segments in the model given the sequence 
+% (matrix) of state vectors. 
+%
+% Input
+%    km       ->   The model struct.
+%    states   ->   The sequence of states, (nfr x sts)
+%    extrapoints ->   string identifying extra field of km with
+%                     points to simulate.
+% Output
+%    m        <-   Simulated marker data
+%    mnames   <-   Cell array with the names of the simulated markers
+%    xpoints  <-   simulated extra points
+
+% Kjartan Halvorsen
+% 2003-02-05
+
+[nst,nfr]=size(states);
+
+% Prepare marker data.
+[mnames, p0] = prepare_mdata(km.p0);
+
+ys=zeros(3*length(mnames),nfr);
+for i=1:nfr
+  [ys(:,i)]=observe_mechanism_H([states(:,i); zeros(nst,1)],[], ...
+			      km.twists,p0);
+end
+m=ys';
+
+if ( nargin==3 & isfield(km, extrapoints) )
+  xp = getfield(km, extrapoints);
+  ytest=observe_mechanism_H([states(:,1); zeros(nst,1)],[], ...
+			      km.twists, xp);
+  
+  ys=zeros(length(ytest),nfr);
+  for i=1:nfr
+    [ys(:,i)]=observe_mechanism_H([states(:,i); zeros(nst,1)],[], ...
+				  km.twists, xp);
+  end
+
+  xpoints=ys';
+end
