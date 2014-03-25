@@ -1,4 +1,0 @@
-    [V_left,D_left] = eig(cov_left);
-    [D_left, order] = sort(diag(D_left), 'descend');
-    D_left = diag(D_left);
-    V_left = V_left(:, order);

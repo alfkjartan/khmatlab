@@ -1,5 +1,0 @@
-addpath('/home/kjartan/Dropbox/IJSE-Cal/code/')
-addpath('/home/kjartan/Dropbox/IJSE-Cal/code/imu')
-addpath('/home/kjartan/Dropbox/IJSE-Cal/code/imu/markerdata')
-addpath('/home/kjartan/Dropbox/IJSE-Cal/code/imu/util')
-addpath('/home/kjartan/Dropbox/IJSE-Cal/code/imu/kinematik')

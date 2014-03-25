@@ -1,3 +1,0 @@
-function c = ehrig_jc(p1, p2)
-%% c = ehrig_jc(p1[, p2])
-%% Implementation of the SCoRe method 

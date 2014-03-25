@@ -1,1 +1,0 @@
-function [Wpath, Wnorm] = mobility_along_path(Wep, objcenter)

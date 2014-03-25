@@ -1,8 +1,0 @@
-function segm = kinmodel2globals(hm)
-%  segm = kinmodel2globals(hm)
-% Will set global variables, and return a set of segments, given the
-% kinematic model hm (a struct).
-
-% Kjartan halvorsen
-% 2011-10-26
-

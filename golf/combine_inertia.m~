@@ -1,9 +1,0 @@
-function II = combine_inertia(I1, CoM1, inertia1, I2, CoM2, inertia2)
-%%  II = combine_inertia(I1, CoM1, inertia1, I2, CoM2, inertia2)
-%% Combines the inertial parameters of two parts of the same rigid body. The CoM and
-%% inertia matrices must be with respect to the same coordinate system.
-
-%% Kjartan Halvorsen
-%% 2013-08-23
-
-
