@@ -502,7 +502,8 @@ for fp=usefps
     [Wleft, Wepleft, Mleft, Mepleft, Mfleft] = ...
         golfer_mobility(gmleft, statesleft(1:nstsleft/2,:));
 
-    assert(Jhepleft, Jhepright, 1e-12)
+    
+    assert(norm(Jhepleft-Jhepright), 1e-12)
     %assert(Jhleft, Jhright, 1e-12)
     %%assert(Wepbothleft, Wepbothright, 1e-12)
     %%assert(Wbothleft, Wbothright, 1e-12)
