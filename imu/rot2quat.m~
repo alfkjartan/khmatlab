@@ -1,3 +1,0 @@
-function q = rot2mat(R)
-%%  q = rot2mat(R)
-%% Creates a quaternion from 

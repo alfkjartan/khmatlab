@@ -1,1 +1,0 @@
-function [r, pred, JJ] = residual_q2(y, x)

@@ -1,4 +1,0 @@
-function sd = opensensordata(fname)
-%%  sd = opensensordata(fname)
-%% Reads in raw sensor data in fname. The values are in bits up to 1024
-%% and separated by commas. 

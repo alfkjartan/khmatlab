@@ -1,8 +1,0 @@
-function gsb = sensor_frame(md, bfmarkers, fr)
-%%  gsb = sensor_frame(md, bfmarkers, fr)
-%% Computes the transformation taking points in body frame to spatial
-%% frame at given frame fr.
-
-%% Kjartan Halvorsen
-%% 2012-05-10
-

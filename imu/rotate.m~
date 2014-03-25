@@ -1,4 +1,0 @@
-function vs = rotate(vb, Rs, Rsb) 
-%% vs = rotate(vb, Rs, Rsb) 
-%% Returns the vectors in v(i,:) rotated by R*R0, that is
-%%   vn(i,:) = v(i,:) * R0'

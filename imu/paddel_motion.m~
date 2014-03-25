@@ -1,3 +1,0 @@
-function [gg, pb] = paddel_motion(md, trackmarkers, pks, bf_fcn, bf_markers)
-%%  [gg, pb] = paddel_motion(md, pks, bf_fcn, bf_markers)
-%% Computes the movement of the paddel from motion capture data. All
