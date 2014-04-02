@@ -450,8 +450,8 @@ for fp=usefps
     % The trial data are needed because the position of the club
     % with respect to either hand is taken from the first frame
     % (address) of the trial file.
-    [gmleft, gmright, gmbothleft, gmbothright] = ...
-       build_models_club_included(refdata, mdata, bodymass);
+    [gmleft, gmright, gmboth] = ...
+       build_models_hand_as_endpoint(refdata, mdata, bodymass);
     %%     keyboard
 
 
@@ -463,7 +463,7 @@ for fp=usefps
     %% Track models
     [statesleft, dataframesleft] = track_golf_model(gmleft, mdata, filterbandwidth);
     [statesright, dataframesright] = track_golf_model(gmright, mdata, filterbandwidth);
-    [statesboth, dataframesboth] = track_golf_model(gmbothleft, mdata, filterbandwidth);
+    [statesboth, dataframesboth] = track_golf_model(gmboth, mdata, filterbandwidth);
 
     % Simulate models, generate trajectories of joint centers.
     % plot markers and check the residuals, if debug==1
@@ -471,13 +471,13 @@ for fp=usefps
 					     mdata, markers2plot, debug);
     [msimright, objdright, objdright2] = simulate_and_plot(gmright, statesright, dataframesright, mdata, ...
 					       markers2plot, debug);
-    [msimboth, objdboth, objdboth2] = simulate_and_plot(gmbothleft, statesboth, ...
+    [msimboth, objdboth, objdboth2] = simulate_and_plot(gmboth, statesboth, ...
 							 dataframesboth, mdata, ...
 							 markers2plot, debug);
 
     if debug
       convert_radians = 1;
-      plotangles(statesboth, gmbothleft.gcnames(:,1), angles2plot, convert_radians);
+      plotangles(statesboth, gmboth.gcnames(:,1), angles2plot, convert_radians);
 
       %% Plot clubhead center for both hands, to see how well they coincide
 %      plotmarkers(objdleft(:,1:3), clubheadfig(1,1), objdright(:,1:3),clubheadfig(1,1), clubheadfig(1,:), {'left', 'right'});
@@ -493,85 +493,20 @@ for fp=usefps
     nstsboth = size(statesboth, 1);
     nstsright = size(statesright, 1);
     nstsleft = size(statesleft, 1);
-    [Wbothleft, Wepbothleft, Mbothleft, Mepbothleft, Mfbothleft, Jhleft, Jhepleft] = ...
-        golfer_mobility(gmbothleft, statesboth(1:nstsboth/2,:));
-    [Wbothright, Wepbothright, Mbothright, Mepbothright, Mfbothright, Jhright, Jhepright] = ...
-        golfer_mobility(gmbothright, statesboth(1:nstsboth/2,:));
+    [Wboth, Wepboth, Mboth, Mepboth, Mfboth, Jh, Jhep] = ...
+        golfer_mobility(gmboth, statesboth(1:nstsboth/2,:));
     [Wright, Wepright, Mright, Mepright, Mfright] = ...
         golfer_mobility(gmright, statesright(1:nstsright/2,:));
     [Wleft, Wepleft, Mleft, Mepleft, Mfleft] = ...
         golfer_mobility(gmleft, statesleft(1:nstsleft/2,:));
 
     
-    assert(norm(Jhepleft(:)-Jhepright(:)) < 1e-12)
-    %assert(Jhleft, Jhright, 1e-12)
-    %%assert(Wepbothleft, Wepbothright, 1e-12)
-    %%assert(Wbothleft, Wbothright, 1e-12)
 
      %% W is (6x6) mobility matrix for all six degrees of freedom of the manipulated
      %% object (the club) in the local coordinate system of the club and under the
      %% assumption that the inertia of the club can be ignored.
      %% Wep is the mobility (3x3) of the clubhead in spatial (lab) coordinates.
 
-     if debug
-       % Plot mobility (Wep) in the three directions
-	figure(mobfig(1));
-	clf
-	%Wepx = Wep(1,1,:);
-
-	lstfr = min(400, size(Wepbothleft,3));
-	subplot(311)
-	plot(vectorize(Wepbothleft(1,1,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wepbothright(1,1,1:lstfr)), 'color', [0 1 0]);
-	subplot(312)
-	plot(vectorize(Wepbothleft(2,2,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wepbothright(2,2,1:lstfr)), 'color', [0 1 0]);
-	subplot(313)
-	plot(vectorize(Wepbothleft(3,3,1:lstfr)), 'color', [ 1, 0, 0 ]);
-	hold on
-	plot(vectorize(Wepbothright(3,3,1:lstfr)), 'color', [0 1 0]);
-
-	figure(mobfig(2));
-	clf
-	%Wepx = Wep(1,1,:);
-
-	lstfr = min(410, size(Wbothleft,3));
-	subplot(311)
-	plot(vectorize(Wbothleft(1,1,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wbothright(1,1,1:lstfr)), 'color', [0 1 0]);
-	subplot(312)
-	plot(vectorize(Wbothleft(2,2,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wbothright(2,2,1:lstfr)), 'color', [0 1 0]);
-	subplot(313)
-	plot(vectorize(Wbothleft(3,3,1:lstfr)), 'color', [ 1, 0, 0 ]);
-	hold on
-	plot(vectorize(Wbothright(3,3,1:lstfr)), 'color', [0 1 0]);
-
-	figure(inertfig);
-	clf
-	%Wepx = Wep(1,1,:);
-
-	subplot(311)
-	plot(vectorize(Wepleft(1,1,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wepright(1,1,1:lstfr)), 'color', [0 1 0]);
-	plot(vectorize(Wepbothright(1,1,1:lstfr)), 'color', [0 0 0]);
-	subplot(312)
-	plot(vectorize(Wepleft(2,2,1:lstfr)), 'color', [1, 0, 0]);
-	hold on
-	plot(vectorize(Wepright(2,2,1:lstfr)), 'color', [0 1 0]);
-	plot(vectorize(Wepbothright(2,2,1:lstfr)), 'color', [0 0 0]);
-	subplot(313)
-	plot(vectorize(Wepleft(3,3,1:lstfr)), 'color', [ 1, 0, 0 ]);
-	hold on
-	plot(vectorize(Wepright(3,3,1:lstfr)), 'color', [0 1 0]);
-	plot(vectorize(Wepbothright(3,3,1:lstfr)), 'color', [0 0 0]);
-
-     end
 
     % Find events. 
      [imp_fr, imp_fit, back_starts, back_ends] = find_events_new(objdboth(:,1:3));
@@ -589,7 +524,6 @@ for fp=usefps
     % events{3,2} = back_ends;
 
     % Does nothing right now. Not implemented
-    Wepboth = Wepbothleft;
     [Wpathleft, Wnormleft] = mobility_along_path(Wepleft, objdleft);
     [Wpathright, Wnormright] = mobility_along_path(Wepright, objdright);
     [Wpathboth, Wnormboth] = mobility_along_path(Wepboth, objdboth(:,1:3));

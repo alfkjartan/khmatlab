@@ -1,11 +1,10 @@
-function [gmleftclub, gmrightclub, gmbothleft, gmbothright] = build_models_club_included(refdata, trialdata, bodymass)
-%  [gmleft, gmright, gmbothleft, gmbothright] = build_models_club_included(refdata, trialdata, bodymass)
+function [gmleft, gmright, gmboth] = build_models_hand_as_endpoint(refdata, trialdata, bodymass)
+%  [gmleft, gmright, gmboth] = build_models_hand_as_endpoint(refdata, trialdata, bodymass)
 %
 % Returns kinematic models for mobility calculations
-%   gmleft     <-  Consists of the left arm with club rigidly attached to hand.
-%   gmright    <-  Consists of the right arm with club rigidly attached to hand.
-%   gmbothleft  <-  Both arms. Club rigidly attached to left hand. Right hand has endpoint at clubhead
-%   gmbothright  <-  Both arms. Club rigidly attached to right hand. Left hand has endpoint at clubhead
+%   gmleft     <-  Consists of the left arm with hand as endsegment.
+%   gmright    <-  Consists of the right arm with hand as endsegment.
+%   gmboth     <-  Both arms. 
 %
 % Note that the grip is assumed to be firm, so that the club and hand(s) form one segment.
 % In other words: no degrees of freedom between the hands and club.
@@ -39,6 +38,10 @@ function [gmleftclub, gmrightclub, gmbothleft, gmbothright] = build_models_club_
 % Find suitable frame to use as address position
 
 club_1_tr = extractmarkers(trialdata, 'ClubCoM');
+if isempty(club_1_tr)
+  club_1_tr = extractmarkers(trialdata, 'AnotherMarkerName');
+end
+
 [impact, impact_fit, pquad, dist2address, max_before_backsw] ...
 = find_impact_from_point(club_1_tr);
 
@@ -232,39 +235,6 @@ lhand.moment_of_inertia = lhand.mass ...
 lhand.generalized_inertia = [lhand.mass*eye(3) zeros(3,3)
 			      zeros(3,3)  lhand.moment_of_inertia];
 
-% Object frame is club frame
-e_z = grip_top - heel_bottom_grove;
-e_z = e_z / norm(e_z);
-e_y = toe_bottom_grove - heel_bottom_grove;
-e_y = e_y - (e_y'*e_z)*e_z; 
-e_y = e_y / norm(e_y);
-e_x = cross(e_y, e_z);
-
-club_head_center =0.5*heel_bottom_grove + 0.5*toe_top_grove; 
-% This point is used to compute the velocity of the club head
-club.g0 = cat(1, cat(2, e_x, e_y, e_z, club_head_center),...
-			[0 0 0 1]);
-lhand.object_frame = club.g0;
-
-%% Left hand+club
-[club.mass, club.CoM, club.local_inertia, club.inertia] = ...
-    get_club_model(grip_top, ...
-		  toe_top_grove, ...
-		  toe_bottom_grove,...
-		  heel_bottom_grove);
-
-lhandclub = lhand;
-lhand_inertia_labframe = lhand.g0(1:3, 1:3)*lhand.moment_of_inertia*lhand.g0(1:3,1:3)'; 
-
-[lhandclub.moment_of_inertia, lhandclub.CoM, lhandclub.mass] = combine_inertia(lhand_inertia_labframe, lhand.CoM, lhand.mass, club.inertia, club.CoM, club.mass);
-
-%%keyboard
-%% Rotate moment of inertia matrix back to local coordinate system of club.
-lhandclub.moment_of_inertia = club.g0(1:3, 1:3)'*lhandclub.moment_of_inertia ...
-			      *club.g0(1:3,1:3); 
-lhandclub.generalized_inertia = [lhandclub.mass*eye(3) zeros(3,3)
-			      zeros(3,3)  lhandclub.moment_of_inertia];
-lhandclub.g0 = cat(1, cat(2, club.g0(1:3, 1:3), lhandclub.CoM), [0 0 0 1]);
 
 
 % The right arm 
@@ -366,20 +336,23 @@ rhand.moment_of_inertia = rhand.mass ...
 rhand.generalized_inertia = [rhand.mass*eye(3) zeros(3,3)
 			      zeros(3,3)  rhand.moment_of_inertia];
 
-% Object frame is right club frame
-rhand.object_frame = club.g0;
+% Object frame is club frame
+e_z = grip_top - heel_bottom_grove;
+e_z = e_z / norm(e_z);
+e_y = toe_bottom_grove - heel_bottom_grove;
+e_y = e_y - (e_y'*e_z)*e_z; 
+e_y = e_y / norm(e_y);
+e_x = cross(e_y, e_z);
 
-rhandclub = rhand;
-rhand_inertia_labframe = rhand.g0(1:3, 1:3)*rhand.moment_of_inertia*rhand.g0(1:3,1:3)'; 
-[rhandclub.moment_of_inertia, rhandclub.CoM, rhandclub.mass] = combine_inertia(rhand_inertia_labframe, rhand.CoM, rhand.mass, club.inertia, club.CoM, club.mass);
-
-%% Rotate moment of inertia matrix back to local coordinate system of club.
-rhandclub.moment_of_inertia = club.g0(1:3, 1:3)'*rhandclub.moment_of_inertia*club.g0(1:3,1:3);rhandclub.generalized_inertia = [rhandclub.mass*eye(3) zeros(3,3)
-			      zeros(3,3)  rhandclub.moment_of_inertia];
-rhandclub.g0 = cat(1, cat(2, club.g0(1:3, 1:3), rhandclub.CoM), [0 0 0 1]);
+endpoint =0.5*rhand.CoM + 0.5*lhand.CoM; 
+% This point is used to compute the velocity of the club head
+club_g0 = cat(1, cat(2, e_x, e_y, e_z, endpoint),...
+			[0 0 0 1]);
+lhand.object_frame = club_g0;
+rhand.object_frame = club_g0;
 
 %%keyboard
-endpointstr = 'ClubCoM';
+endpointstr = 'MidHands';
 
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -400,58 +373,33 @@ trunk.g0 = eye(4);
 % Define the complete models
 %----------------------------------------------------------------
 
-[gmbothleft.twists, gmbothleft.p0, gmbothleft.gcnames, gmbothleft.jcs, gmbothleft.segm_names, gmbothleft.CoM, radius, gmbothleft.mass, gmbothleft.g0, gmbothleft.inertia, gmbothleft.object_frame, gmbothleft.objectcenter] = build_model(trunk);
-gmbothright = gmbothleft;
-
-[gmleftclub.twists, gmleftclub.p0, gmleftclub.gcnames, gmleftclub.jcs, gmleftclub.segm_names, gmleftclub.CoM, ...
- radius_la, gmleftclub.mass, gmleftclub.g0, gmleftclub.inertia, gmleftclub.object_frame, gmleftclub.objectcenter] =  build_model(luarm, llarm, lhandclub);
+[gmboth.twists, gmboth.p0, gmboth.gcnames, gmboth.jcs, gmboth.segm_names, gmboth.CoM, radius, gmboth.mass, gmboth.g0, gmboth.inertia, gmboth.object_frame, gmboth.objectcenter] = build_model(trunk);
 
 [gmleft.twists, gmleft.p0, gmleft.gcnames, gmleft.jcs, gmleft.segm_names, gmleft.CoM, ...
  radius_la, gmleft.mass, gmleft.g0, gmleft.inertia, gmleft.object_frame, gmleft.objectcenter] =  build_model(luarm, llarm, lhand);
 
-[gmrightclub.twists, gmrightclub.p0, gmrightclub.gcnames, gmrightclub.jcs, gmrightclub.segm_names, gmrightclub.CoM, ...
- radius_la, gmrightclub.mass, gmrightclub.g0, gmrightclub.inertia, gmrightclub.object_frame, gmrightclub.objectcenter] =  build_model(ruarm, rlarm, rhandclub);
-
 [gmright.twists, gmright.p0, gmright.gcnames, gmright.jcs, gmright.segm_names, gmright.CoM, ...
  radius_la, gmright.mass, gmright.g0, gmright.inertia, gmright.object_frame, gmright.objectcenter] =  build_model(ruarm, rlarm, rhand);
 
-gmbothleft.twists{2} = gmleftclub.twists;
-gmbothleft.twists{3} = gmright.twists;
-gmbothleft.p0{2} = gmleftclub.p0;
-gmbothleft.p0{3} = gmright.p0;
-gmbothleft.jcs{2} = gmleftclub.jcs;
-gmbothleft.jcs{3} = gmright.jcs;
-gmbothleft.CoM{2} = gmleftclub.CoM;
-gmbothleft.CoM{3} = gmright.CoM;
-gmbothleft.g0{2} = gmleftclub.g0;
-gmbothleft.g0{3} = gmright.g0;
-gmbothleft.inertia{2} = gmleftclub.inertia;
-gmbothleft.inertia{3} = gmright.inertia;
-gmbothleft.object_frame{2} = gmleftclub.object_frame;
-gmbothleft.object_frame{3} = gmright.object_frame;
-gmbothleft.objectcenter{2} = gmleftclub.objectcenter;
-gmbothleft.objectcenter{3} = gmright.objectcenter;
-gmbothleft.gcnames = cat(1, gmbothleft.gcnames, gmleftclub.gcnames, gmright.gcnames);
-gmbothleft.segm_names = cat(1, gmbothleft.segm_names, gmleftclub.segm_names, gmright.segm_names);
+gmboth.twists{2} = gmleft.twists;
+gmboth.twists{3} = gmright.twists;
+gmboth.p0{2} = gmleft.p0;
+gmboth.p0{3} = gmright.p0;
+gmboth.jcs{2} = gmleft.jcs;
+gmboth.jcs{3} = gmright.jcs;
+gmboth.CoM{2} = gmleft.CoM;
+gmboth.CoM{3} = gmright.CoM;
+gmboth.g0{2} = gmleft.g0;
+gmboth.g0{3} = gmright.g0;
+gmboth.inertia{2} = gmleft.inertia;
+gmboth.inertia{3} = gmright.inertia;
+gmboth.object_frame{2} = gmleft.object_frame;
+gmboth.object_frame{3} = gmright.object_frame;
+gmboth.objectcenter{2} = gmleft.objectcenter;
+gmboth.objectcenter{3} = gmright.objectcenter;
+gmboth.gcnames = cat(1, gmboth.gcnames, gmleft.gcnames, gmright.gcnames);
+gmboth.segm_names = cat(1, gmboth.segm_names, gmleft.segm_names, gmright.segm_names);
 
-gmbothright.twists{2} = gmleft.twists;
-gmbothright.twists{3} = gmrightclub.twists;
-gmbothright.p0{2} = gmleft.p0;
-gmbothright.p0{3} = gmrightclub.p0;
-gmbothright.jcs{2} = gmleft.jcs;
-gmbothright.jcs{3} = gmrightclub.jcs;
-gmbothright.CoM{2} = gmleft.CoM;
-gmbothright.CoM{3} = gmrightclub.CoM;
-gmbothright.g0{2} = gmleft.g0;
-gmbothright.g0{3} = gmrightclub.g0;
-gmbothright.inertia{2} = gmleft.inertia;
-gmbothright.inertia{3} = gmrightclub.inertia;
-gmbothright.object_frame{2} = gmleft.object_frame;
-gmbothright.object_frame{3} = gmrightclub.object_frame;
-gmbothright.objectcenter{2} = gmleft.objectcenter;
-gmbothright.objectcenter{3} = gmrightclub.objectcenter;
-gmbothright.gcnames = cat(1, gmbothright.gcnames, gmleft.gcnames, gmrightclub.gcnames);
-gmbothright.segm_names = cat(1, gmbothright.segm_names, gmleft.segm_names, gmrightclub.segm_names);
 
 function m = mmyextractmeanmarkers(rd, mname)
 % Will look in struct rd for marker (or landmark) of name

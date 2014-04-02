@@ -6,8 +6,8 @@
 
 %% Assumes    [gmleft, gmright, gmbothleft, gmbothright] = build_test_models(...)
 
-test_double_hand = 0;
-test_single_hand = 1;
+test_double_hand = 1;
+test_single_hand = 0;
 
 NN = 10;
 

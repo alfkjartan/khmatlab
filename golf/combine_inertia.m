@@ -12,18 +12,34 @@ if (nargin == 0)
 end
 
 mass = mass1 + mass2;
-CoM = (CoM1*mass1 + CoM2*mass2) / mass;
 
-v1 = CoM1 - CoM;
-v2 = CoM2 - CoM;
+if mass < 1e-12
+   CoM = zeros(3,1);
+else
+  CoM = (CoM1*mass1 + CoM2*mass2) / mass;
+end
 
-II = I1 + I2 + mass1 * diag( [v1(2:3)'*v1(2:3)
-			      v1([1 3])'*v1([1 3])
-			      v1(1:2)'*v1(1:2)] ) ...
-    + mass2 * diag( [v2(2:3)'*v2(2:3)
-			      v2([1 3])'*v2([1 3])
-			      v2(1:2)'*v2(1:2)] );
+v1 = CoM - CoM1;
+v2 = CoM - CoM2;
 
+%%II = I1 + I2 + mass1 * diag( [v1(2:3)'*v1(2:3)
+%%			      v1([1 3])'*v1([1 3])
+%%			      v1(1:2)'*v1(1:2)] ) ...
+%%    + mass2 * diag( [v2(2:3)'*v2(2:3)
+%%			      v2([1 3])'*v2([1 3])
+%%			      v2(1:2)'*v2(1:2)] );
+II = I1 + I2 + mass1 * parallel_axis(v1) ...
+             + mass2 * parallel_axis(v2);
+
+
+function JJ = parallel_axis(t)
+%% The unscaled change in moment of inertia because of translation of reference point
+%% t is the vector from old point to new
+%%JJ = [-(t(2)^2+t(3)^2) t(1)*t(2) t(1)*t(3)
+%%      t(1)*t(2) -(t(1)^2 + t(3)^2) t(2)*t(3)
+%%      t(1)*t(3) t(2)*t(3) -(t(1)^2 + t(2)^2)];
+ 
+JJ = t'*t*eye(3) - t*t';
 
 function do_unit_test()
 

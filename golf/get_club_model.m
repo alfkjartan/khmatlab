@@ -28,12 +28,15 @@ function [mass, CoM, local_inertia, inertia] = get_club_model(grip_top, toe_top_
 
 %% Hardcoded parameters
 grip.mass = 50*1e-3; % 50 g
+grip.mass = 0*1e-3; % 50 g
 grip.length = 0.27; % 27cm typical length of the grip
 grip.r2 = 0.01; % Radius of outer contour of the grip
 grip.r1 = 0.006; % 6mm radius of shaft 
 shaft.mass = 120*1e-3; % 120 g
+shaft.mass = 0*1e-3; % 120 g
 shaft.r = 0.004; % average radius of  shaft
 clubhead.mass = 300*1e-3; % 300 g
+clubhead.mass = 0*1e-3; % 300 g
 
 e_shaft = heel_bottom_grove - grip_top; % Points down the shaft
 e_shaft = e_shaft / norm(e_shaft);
@@ -45,16 +48,16 @@ R_club = [e_club_x e_club_pa e_shaft];
 
 club_head_center = 0.5*heel_bottom_grove + 0.5*toe_top_grove; 
 
-grip.CoM = grip_top + 0.4*grip.length*e_shaft; % CoM 12cm down the shaft. Grip typically 27cm long.
-grip.local_inertia = grip.mass * diag( [1/12*(3*(grip.r1^2 + grip.r2^2) + grip.length*2)
-					1/12*(3*(grip.r1^2 + grip.r2^2) + grip.length*2)
+grip.CoM = (grip_top + 0.4*grip.length*e_shaft); % CoM 12cm down the shaft. Grip typically 27cm long.
+grip.local_inertia = grip.mass * diag( [1/12*(3*(grip.r1^2 + grip.r2^2) + grip.length^2)
+					1/12*(3*(grip.r1^2 + grip.r2^2) + grip.length^2)
 					1/2 * (grip.r1^2 + grip.r2^2)]);
 grip.inertia = R_club * grip.local_inertia * R_club';
 
 shaft.length = norm(grip_top - heel_bottom_grove); % length of the shaft
-shaft.CoM = grip_top + 0.35*shaft.length*e_shaft; 
-shaft.local_inertia = shaft.mass * diag( [1/12*(6*shaft.r^2 + shaft.length*2)
-					  1/12*(6*shaft.r^2 + shaft.length*2)
+shaft.CoM = (grip_top + 0.35*shaft.length*e_shaft); 
+shaft.local_inertia = shaft.mass * diag( [1/12*(6*shaft.r^2 + shaft.length^2)
+					  1/12*(6*shaft.r^2 + shaft.length^2)
 					  shaft.r^2]);
 shaft.inertia = R_club * shaft.local_inertia * R_club';
 
@@ -68,3 +71,4 @@ clubhead.inertia = zeros(3,3);
 
 local_inertia = R_club' * inertia * R_club;
 
+%%keyboard
