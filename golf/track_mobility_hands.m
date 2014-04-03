@@ -545,45 +545,54 @@ for fp=usefps
 
 
      if plot_mobility
-	%% Ellipse at impact
-	Watimpact = cat(3, Wepboth(:,:,imp_fr), Wepleft(:,:,imp_fr), Wepright(:,:,imp_fr));
-	colors = [0 0 0; 0.9 0 0; 0 0.8 0];
-	visualize_mobility(Watimpact, colors, mobfig(3), fname_plot_imp);
-
-	
-       % Plot mobility (Wep) in the three directions
+	lwdth = 5;
+	sweepstart = 20;
+	sweepend = 5;
 	strtfr = back_starts;
 	endfr = imp_fr + 20;
 
 	impact = imp_fr - strtfr + 1;
+	top_backswing = back_ends - strtfr + 1;
+	%% Ellipse at impact
+	Watimpact = cat(3, Wepboth(:,:,imp_fr), Wepleft(:,:,imp_fr), Wepright(:,:,imp_fr));
+	endpointpath = cat(3, objdboth(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdboth(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdleft(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdleft(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdright(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdright(imp_fr,1:3), [sweepstart+sweepend+1,1]));
+
+	colors = [0 0 0; 0.9 0 0; 0 0.8 0];
+	visualize_mobility(Watimpact, colors, mobfig(3), fname_plot_imp, endpointpath);
+
+	
+       % Plot mobility (Wep) in the three directions
+
 	figure(mobfig(2));
 	clf
 
 	subplot(211)
 	ylabel('W along path')
-	plot(Wpathleft(strtfr:endfr), 'color', [0.9, 0, 0]);
+	plot(Wpathleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
 	hold on
-	plot(Wpathright(strtfr:endfr), 'color', [0, 0.8, 0]);
-	plot(Wpathboth(strtfr:endfr), 'color', [0, 0, 0]);
+	plot(Wpathright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
+	plot(Wpathboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
 	yl = get(gca, 'Ylim');
 	plot([impact, impact], yl, 'color', [0 0 0])
+	plot([top_backswing, top_backswing], yl, 'color', [0.2 0.2 0.2])
 
-	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wpathleft(imp_fr)), 'color', [0.9, 0, 0])
-	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wpathright(imp_fr)), 'color', [0, 0.8, 0])
-	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wpathboth(imp_fr)), 'color', [0.7, 0.7, 0])
+%%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wpathleft(imp_fr)), 'color', [0.9, 0, 0])
+%%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wpathright(imp_fr)), 'color', [0, 0.8, 0])
+%%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wpathboth(imp_fr)), 'color', [0.7, 0.7, 0])
 
 	subplot(212)
 	ylabel('W normal to path')
-	plot(Wnormleft(strtfr:endfr), 'color', [0.9, 0, 0]);
+	plot(Wnormleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
 	hold on
-	plot(Wnormright(strtfr:endfr), 'color', [0, 0.8, 0]);
-	plot(Wnormboth(strtfr:endfr), 'color', [0, 0, 0]);
+	plot(Wnormright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
+	plot(Wnormboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
 	yl = get(gca, 'Ylim');
 	plot(repmat(imp_fr-strtfr+1, 1, 2), yl, 'color', [0 0 0])
+	plot([top_backswing, top_backswing], yl, 'color', [0.2 0.2 0.2])
 
-	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wnormleft(imp_fr)), 'color', [0.9, 0, 0])
-	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wnormright(imp_fr)), 'color', [0, 0.8, 0])
-	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wnormboth(imp_fr)), 'color', [0, 0, 0])
+%%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wnormleft(imp_fr)), 'color', [0.9, 0, 0])
+%%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wnormright(imp_fr)), 'color', [0, 0.8, 0])
+%%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wnormboth(imp_fr)), 'color', [0, 0, 0])
 
 	print(fname_plot, '-dpdf')
 
