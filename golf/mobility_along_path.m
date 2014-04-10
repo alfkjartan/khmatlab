@@ -1,4 +1,4 @@
-function [Wpath, Wnormal] = mobility_along_path(Wep, endpoint)
+function [Wpath, Wnormal, evmagn] = mobility_along_path(Wep, endpoint)
 %% [Wpath, Wnorm] = mobility_along_path(Wep, endpoint)
 %% Will return the mobility in the direction of movement of the end point, and the mobility
 %% in the normal plane along the path of the end point.

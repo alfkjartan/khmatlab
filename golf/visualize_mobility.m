@@ -1,4 +1,4 @@
-function visualize_mobility(WW, colors, fig, fname, endpointpath)
+function visualize_mobility(WW, colors, , endpointpath, fig, fname)
 %%  visualize_mobility(W, colors, fig, fname)
 %%  Plots the mobility as an ellipse in the xz-plane (frontal plane of golfer) and the yz-plane
 %%  (sagittal plane of golfer)
@@ -49,25 +49,25 @@ for i = 1:nmob
     axlim = [-1, 1];
 
     subplot(221)
-    plot(eexz(1,:), eexz(2,:), 'color', color, 'linewidth', lwdth)
+    plot(eeyz(1,:), eeyz(2,:), 'color', color, 'linewidth', lwdth)
     hold on
-    plot(endpointpath(:,1,i), endpointpath(:,3,i), 'color', color, 'linewidth', lwdth-1)
-    title('Frontal plane (xz)')
+    plot(endpointpath(:,2,i), endpointpath(:,3,i), 'color', color, 'linewidth', lwdth-1)
+    title('Frontal plane (yz)')
     set(gca, 'xlim', axlim)
     set(gca, 'ylim', axlim)
-    xlabel('x')
+    xlabel('y')
     ylabel('z')
 
     axis equal
     
     subplot(222)
-    plot(eeyz(1,:), eeyz(2,:), 'color', color, 'linewidth', lwdth)
+    plot(eexz(1,:), eexz(2,:), 'color', color, 'linewidth', lwdth)
     hold on
-    plot(endpointpath(:,2,i), endpointpath(:,3,i), 'color', color, 'linewidth', lwdth-1)
-    title('Sagittal plane (yz)')
+    plot(endpointpath(:,1,i), endpointpath(:,3,i), 'color', color, 'linewidth', lwdth-1)
+    title('Sagittal plane (xz)')
     set(gca, 'xlim', axlim)
     set(gca, 'ylim', axlim)
-    xlabel('y')
+    xlabel('x')
     ylabel('z')
     axis equal
 

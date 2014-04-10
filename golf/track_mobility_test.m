@@ -484,7 +484,7 @@ for fp=usefps
     %%[gmleft, gmright, gmbothleft, gmbothright] = ...
      %%  build_test_models(refdata, mdata, bodymass);
     [gmleft, gmright, gmbothleft, gmbothright] = ...
-       build_test_models(refdata, mdata, 80);
+       build_models_club_included(refdata, mdata, 80);
     %%     keyboard
 
 

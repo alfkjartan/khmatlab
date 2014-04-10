@@ -1,4 +1,4 @@
-function  [impact, impact_fit, pquad, dist2address, firstmax, backswingstarts] = find_impact_from_point(ep)
+function  [impact, impact_fit, pquad, dist2address, firstmax, backswingstarts] = find_impact_from_point_new(ep)
 
 				% Find events
   clubtoe = ep;
@@ -13,10 +13,14 @@ function  [impact, impact_fit, pquad, dist2address, firstmax, backswingstarts] =
   
 				% Start of backswing
   clublow = intersect(clubtoehasdata, find(clubtoe(:,3) < -0.9));
+  if isempty(clublow)
+    clublow = intersect(clubtoehasdata, find(clubtoe(:,3) < -0.3));
+  end
 
   clublowandslow = intersect(... 
 			     intersect(clublow, find(clubtoevelocity(:,2) > -1)), ...
 			     find(magnvel < 1));
+%  keyboard
   maxvel = find(magnvel == max(magnvel));
   beforemaxvel = (1:maxvel(1));
   clublowandslow = intersect(clublowandslow, beforemaxvel);
@@ -42,7 +46,7 @@ function  [impact, impact_fit, pquad, dist2address, firstmax, backswingstarts] =
   clubafter = intersect(club_low_and_highvel, ...
 		      find(clubtoe(:,2) > ...
 			   impactycoord));
-% keyboard
+  %%keyboard
   impact_frs = [clubbefore(end) clubafter(1)]
   if (abs(clubtoe(impact_frs(1), 1) - impactycoord) < ...
       abs(clubtoe(impact_frs(2), 1) - impactycoord))

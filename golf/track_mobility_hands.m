@@ -509,7 +509,9 @@ for fp=usefps
 
 
     % Find events. 
-     [imp_fr, imp_fit, back_starts, back_ends] = find_events_new(objdboth(:,1:3));
+    %% Use marker on club
+    clubtoe = extractmarkers(mdata, 'Bottom grove@toe');
+     [imp_fr, imp_fit, back_starts, back_ends] = find_events_new(clubtoe);
      
     if ~isempty(imp_fit)
             imp_fr = round(imp_fit);
@@ -526,8 +528,16 @@ for fp=usefps
     % Does nothing right now. Not implemented
     [Wpathleft, Wnormleft] = mobility_along_path(Wepleft, objdleft);
     [Wpathright, Wnormright] = mobility_along_path(Wepright, objdright);
-    [Wpathboth, Wnormboth] = mobility_along_path(Wepboth, objdboth(:,1:3));
-
+    [Wpathboth, Wnormboth, endpointvelocity] = mobility_along_path(Wepboth, objdboth(:,1:3));
+    lowvel = find(endpointvelocity < 0.005);
+    Wpathleft(lowvel) = nan;
+    Wnormleft(lowvel) = nan;
+    Wpathright(lowvel) = nan;
+    Wnormright(lowvel) = nan;
+    Wpathboth(lowvel) = nan;
+    Wnormboth(lowvel) = nan;
+    
+    
     mobility_along_path_at_impact_left(fpind, trind) = Wpathleft(imp_fr);
     mobility_normal_to_path_at_impact_left = Wnormleft(imp_fr);
 
@@ -546,11 +556,13 @@ for fp=usefps
 
      if plot_mobility
 	lwdth = 5;
-	sweepstart = 20;
+	sweepstart = 30;
 	sweepend = 5;
 	strtfr = back_starts;
 	endfr = imp_fr + 20;
-
+	
+	tvec = (0:1:(endfr-strtfr))'/120;
+    
 	impact = imp_fr - strtfr + 1;
 	top_backswing = back_ends - strtfr + 1;
 	%% Ellipse at impact
@@ -558,42 +570,45 @@ for fp=usefps
 	endpointpath = cat(3, objdboth(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdboth(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdleft(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdleft(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdright(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdright(imp_fr,1:3), [sweepstart+sweepend+1,1]));
 
 	colors = [0 0 0; 0.9 0 0; 0 0.8 0];
-	visualize_mobility(Watimpact, colors, mobfig(3), fname_plot_imp, endpointpath);
+	visualize_mobility_FT(Watimpact, colors , endpointpath*2, mobfig(3), fname_plot_imp);
 
 	
-       % Plot mobility (Wep) in the three directions
-
 	figure(mobfig(2));
 	clf
-
+    lwdth = 2;
 	subplot(211)
 	ylabel('W along path')
-	plot(Wpathleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
+	plot(tvec, Wpathleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
 	hold on
-	plot(Wpathright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
-	plot(Wpathboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
+	plot(tvec, Wpathright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
+	plot(tvec, Wpathboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
 	yl = get(gca, 'Ylim');
-	plot([impact, impact], yl, 'color', [0 0 0])
-	plot([top_backswing, top_backswing], yl, 'color', [0.2 0.2 0.2])
-
+	plot(tvec([impact, impact]), yl, 'color', [0 0 0])
+	plot(tvec([top_backswing, top_backswing]), yl, 'color', [0.2 0.2 0.2])
+ xlabel('time [s]')
+    set(gca, 'ytick', [0])
+    set(gca, 'xlim', [0 1.15])
+    box off
 %%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wpathleft(imp_fr)), 'color', [0.9, 0, 0])
 %%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wpathright(imp_fr)), 'color', [0, 0.8, 0])
 %%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wpathboth(imp_fr)), 'color', [0.7, 0.7, 0])
 
 	subplot(212)
 	ylabel('W normal to path')
-	plot(Wnormleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
+	plot(tvec, Wnormleft(strtfr:endfr), 'color', [0.9, 0, 0], 'linewidth', lwdth);
 	hold on
-	plot(Wnormright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
-	plot(Wnormboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
+	plot(tvec, Wnormright(strtfr:endfr), 'color', [0, 0.8, 0], 'linewidth', lwdth);
+	plot(tvec, Wnormboth(strtfr:endfr), 'color', [0, 0, 0], 'linewidth', lwdth);
 	yl = get(gca, 'Ylim');
-	plot(repmat(imp_fr-strtfr+1, 1, 2), yl, 'color', [0 0 0])
-	plot([top_backswing, top_backswing], yl, 'color', [0.2 0.2 0.2])
-
+	plot(tvec([impact impact]), yl, 'color', [0 0 0])
+	plot(tvec([top_backswing, top_backswing]), yl, 'color', [0.2 0.2 0.2])
+    xlabel('time [s]')
+    set(gca, 'ytick', [0])
 %%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wnormleft(imp_fr)), 'color', [0.9, 0, 0])
 %%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wnormright(imp_fr)), 'color', [0, 0.8, 0])
 %%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wnormboth(imp_fr)), 'color', [0, 0, 0])
-
+    set(gca, 'xlim', [0 1.15])
+     box off
 	print(fname_plot, '-dpdf')
 
 
