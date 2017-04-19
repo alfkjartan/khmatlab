@@ -1,8 +1,8 @@
-function [Ms,Mstrue] = link_inertia(km)
-%%  Ms = link_inertia(km)
+function Ms = link_inertia(km)
+%  Ms = link_inertia(km)
 
 if nargin == 0
-   [Ms, Mstrue] = do_unit_test();
+   Ms = do_unit_test();
 else
   if isstruct(km)
      %% Initial call
@@ -23,7 +23,7 @@ else
 end
 
 
-function [Ms, Mstrue] = do_unit_test()
+function Ms = do_unit_test()
 
 km.inertia = {eye(6), {2*eye(6), {3*eye(6)}}};
 

@@ -1,0 +1,7 @@
+*.pyc
+*.npz
+*~
+*2016*
+.ipynb_checkpoint*
+#*#
+Untitled*

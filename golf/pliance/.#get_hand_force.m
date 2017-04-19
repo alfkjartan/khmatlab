@@ -1,1 +1,0 @@
-kjartan@kjartan-uu.5244:1385961499

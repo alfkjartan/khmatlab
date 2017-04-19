@@ -11,17 +11,32 @@ function q3 = quaternion_mult(q1,q2)
 % 2007-06-18
 
 if (nargin > 0)
-  if (size(q1,1) == 4)
-    q1 = [q1(1)+i*q1(2) q1(3)+i*q1(4)
-	  -q1(3)+i*q1(4) q1(1)-i*q1(2)];
-    q2 = [q2(1)+i*q2(2) q2(3)+i*q2(4)
-	  -q2(3)+i*q2(4) q2(1)-i*q2(2)];
-    q3 = q1*q2;
+  if (length(q1) == 4)
+    if 0
+      q1 = [q1(1)+i*q1(2) q1(3)+i*q1(4)
+	       -q1(3)+i*q1(4) q1(1)-i*q1(2)];
+      q2 = [q2(1)+i*q2(2) q2(3)+i*q2(4)
+	      -q2(3)+i*q2(4) q2(1)-i*q2(2)];
+      q3 = q1*q2;
     
-    q3r = real(q3);
-    q3i = imag(q3);
-    q3 = [q3r(1,1); q3i(1,1); q3r(1,2); q3i(1,2)];
+      q3r = real(q3);
+      q3i = imag(q3);
+      q3 = [q3r(1,1); q3i(1,1); q3r(1,2); q3i(1,2)];
+    end
+ 
     
+    r1 = q1(4);  % scalar part
+    v1 = q1(1:3); % vector part
+    r2 = q2(4);
+    v2 = q2(1:3);
+ 
+    v1 = v1(:);
+    v2 = v2(:);
+    
+    r3 = r1*r2 - dot(v1,v2);
+    v3 = r1*v2 + r2*v1 + cross(v1,v2);
+    
+    q3 = cat(1, v3(:), r3);
   else
     q3 = q1*q2;
   end

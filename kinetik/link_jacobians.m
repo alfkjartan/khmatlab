@@ -1,28 +1,28 @@
 function [Jsb,ndofs]=link_jacobians(tws, gsli, th, thind, thproxind, gprox, twsprox)
-%% Jsb=link_jacobians(tws, gsli, th)
-%% Returns the body jacobian for each link in km. The body jacobian J_{st}^b is defined by the 
-%% relationship
-%%          V_{st}^b = J_{st}^b \dot{\theta}
-%% Or in words: The linear relation between joint velocities and the segment velocity in 
-%% body coordinates. Column i is given by the ith instanenous joint twist relative to 
-%% the segment frame.  
-%% Input
-%%   tws    ->  nested array of twists
-%%   gsli   ->  nested array of transformations taking points in the local coordinate system of
-%%              each link to the static frame for th=0
-%%   th     ->  generalized coordinates
-%%   thind  ->  index into generalized coordinates one before start of coordinates 
-%%              for current segment
-%%   thind  ->  list of indices into generalized coordinates that this segment depends upon 
-%%   twsprox -> twists from root up to current segment (6 x nprox) matrix
-%%   gprox   -> proximal rigid transformations (4 x 4 x nprox) matrix, where the 
-%%              ith transformation is
-%%                 g_i = expr(twsprox(1), thprox(1))* ... * expr(twsprox(i), thprox(i))
-%% Output
-%%   Jsb    <-  The jacobians, a (6 x nsts x nsgms) matrix
+% Jsb=link_jacobians(tws, gsli, th)
+% Returns the body jacobian for each link in km. The body jacobian J_{st}^b is defined by the 
+% relationship
+%          V_{st}^b = J_{st}^b \dot{\theta}
+% Or in words: The linear relation between joint velocities and the segment velocity in 
+% body coordinates. Column i is given by the ith instanenous joint twist relative to 
+% the segment frame.  
+% Input
+%   tws    ->  nested array of twists
+%   gsli   ->  nested array of transformations taking points in the local coordinate system of
+%              each link to the static frame for th=0
+%   th     ->  generalized coordinates
+%   thind  ->  index into generalized coordinates one before start of coordinates 
+%              for current segment
+%   thproxind  ->  list of indices into generalized coordinates that this segment depends upon 
+%   twsprox -> twists from root up to current segment (6 x nprox) matrix
+%   gprox   -> proximal rigid transformations (4 x 4 x nprox) matrix, where the 
+%              ith transformation is
+%                 g_i = expr(twsprox(1), thprox(1))* ... * expr(twsprox(i), thprox(i))
+% Output
+%   Jsb    <-  The jacobians, a (6 x nsts x nsgms) matrix
 
 %% Kjartan Halvorsen
-%% 2013-05-29
+% 2013-05-29
 
 if nargin == 0
    do_unit_test();

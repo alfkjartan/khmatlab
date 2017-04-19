@@ -61,6 +61,8 @@ function [Markers,VideoFrameRate,AnalogSignals,AnalogFrameRate,Event,ParameterGr
   proctype=fread(fid,1,'int8')-83;
   % proctype: 1(INTEL-PC); 2(DEC-VAX); 3(MIPS-SUN/SGI)
 
+  keyboard
+  
   if proctype==2,
     fclose(fid);
     fid=fopen(FullFileName,'r','d'); 

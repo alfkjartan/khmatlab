@@ -53,9 +53,10 @@ for i = 1:nmob
     axis equal
     set(gca, 'xlim', axlim1)
     set(gca, 'ylim', axlim2)
-    annotation('ellipse', [0.2262 0.2537 0.017 0.02], 'EdgeColor',[0 0 0]);
-    annotation('ellipse', [0.2262+0.006 0.2537+0.008 0.0049 0.005], 'FaceColor',[0 0 0]);
-    axis off
+    annotation('ellipse', [0.2272 0.2237 0.02 0.028], 'EdgeColor',[0 0 0]);
+    h=text(-0.2, -4.9, 'X','Color',[0 0 0]);
+    %get(h)
+    %axis off
         
     subplot(1,3,2)
     plot(eeyz(1,:), eeyz(2,:), 'color', color, 'linewidth', 3)
@@ -67,8 +68,8 @@ for i = 1:nmob
     axis equal
     set(gca, 'xlim', axlim1)
     set(gca, 'ylim', axlim2)
-   annotation('arrow',[0.4578 0.5776], [0.2637 0.2637]);
-    axis off
+   annotation('arrow',[0.4578 0.5776], [0.2237 0.2237]);
+    %axis off
         
     subplot(1,3,3)
     plot(eexy(2,:), -eexy(1,:), 'color', color, 'linewidth', 3)
@@ -80,8 +81,8 @@ for i = 1:nmob
     axis equal
     set(gca, 'xlim', axlim1)
     set(gca, 'ylim', axlim2)
-    annotation('arrow',[0.7384 0.8582], [0.2637 0.2637]);
-    axis off    
+    annotation('arrow',[0.7384 0.8582], [0.2237 0.2237]);
+    %axis off    
 end
 
 print(fname, '-dpdf')

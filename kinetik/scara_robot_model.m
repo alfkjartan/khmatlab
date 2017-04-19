@@ -1,11 +1,11 @@
 function sm = scara_robot_model(l1, l2, m1, m2, m3, m4, pos0, dirarm)
-%% Returns a model of the scara robot with link lengths l1, l2 and masses m1, m2, m3, m4
+% Returns a model of the scara robot with link lengths l1, l2 and masses m1, m2, m3, m4
 
 %% Kjartan Halvorsen
-%% 2013-06-05
+% 2013-06-05
 
 if nargin == 0
-   %% Defaults
+   % Defaults
    l1 = 1;
    l2 = 2;
    m1 = 1;

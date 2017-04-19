@@ -552,6 +552,7 @@ for fp=usefps
 
     fname_plot = fullfile(ndir, [mfname,'_mobility.pdf']);
     fname_plot_imp = fullfile(ndir, [mfname,'_mobility_impact.pdf']);
+    fname_plot_imp_min = fullfile(ndir, [mfname,'_mobility_impact_minimal.pdf']);
 
 
      if plot_mobility
@@ -569,8 +570,16 @@ for fp=usefps
 	Watimpact = cat(3, Wepboth(:,:,imp_fr), Wepleft(:,:,imp_fr), Wepright(:,:,imp_fr));
 	endpointpath = cat(3, objdboth(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdboth(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdleft(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdleft(imp_fr,1:3), [sweepstart+sweepend+1,1]), objdright(imp_fr-sweepstart:imp_fr+sweepend,1:3)-repmat(objdright(imp_fr,1:3), [sweepstart+sweepend+1,1]));
 
-	colors = [0 0 0; 0.9 0 0; 0 0.8 0];
-	visualize_mobility_FT(Watimpact, colors , endpointpath*2, mobfig(3), fname_plot_imp);
+	colors = [1 1 1; 0.9 0 0; 0 0.8 0];
+	%visualize_mobility_frontpage(Watimpact, colors , endpointpath*2, mobfig(3), fname_plot_imp);
+	
+    fname_plot_imp_axes = {...
+            fullfile(ndir, [mfname,'_mobility_impact_a_skip.pdf']),...
+            fullfile(ndir, [mfname,'_mobility_impact_frontpage.pdf']),...
+            fullfile(ndir, [mfname,'_mobility_impact_c_skip.pdf'])};
+    
+    mobfigs = [figure(), figure(), figure()];
+    visualize_mobility_frontpage(Watimpact, colors , endpointpath, mobfigs, fname_plot_imp_axes);
 
 	
 	figure(mobfig(2));
@@ -585,13 +594,14 @@ for fp=usefps
 	yl = get(gca, 'Ylim');
 	plot(tvec([impact, impact]), yl, 'color', [0 0 0])
 	plot(tvec([top_backswing, top_backswing]), yl, 'color', [0.2 0.2 0.2])
- xlabel('time [s]')
-    set(gca, 'ytick', [0])
+    xlabel('time [s]')
+    ylabel('mobility [kg^{-1}]')
+    %set(gca, 'ytick', [0])
     set(gca, 'xlim', [0 1.15])
     box off
-%%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wpathleft(imp_fr)), 'color', [0.9, 0, 0])
-%%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wpathright(imp_fr)), 'color', [0, 0.8, 0])
-%%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wpathboth(imp_fr)), 'color', [0.7, 0.7, 0])
+    %%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wpathleft(imp_fr)), 'color', [0.9, 0, 0])
+    %%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wpathright(imp_fr)), 'color', [0, 0.8, 0])
+    %%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wpathboth(imp_fr)), 'color', [0.7, 0.7, 0])
 
 	subplot(212)
 	ylabel('W normal to path')
@@ -603,12 +613,13 @@ for fp=usefps
 	plot(tvec([impact impact]), yl, 'color', [0 0 0])
 	plot(tvec([top_backswing, top_backswing]), yl, 'color', [0.2 0.2 0.2])
     xlabel('time [s]')
-    set(gca, 'ytick', [0])
-%%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wnormleft(imp_fr)), 'color', [0.9, 0, 0])
-%%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wnormright(imp_fr)), 'color', [0, 0.8, 0])
-%%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wnormboth(imp_fr)), 'color', [0, 0, 0])
+    ylabel('mobility [kg^{-1}]')
+    %set(gca, 'ytick', [0])
+    %%	text(impact+5, 0.95*yl(2), sprintf('Left: %1.2f', Wnormleft(imp_fr)), 'color', [0.9, 0, 0])
+    %%	text(impact+5, 0.9*yl(2), sprintf('Right: %1.2f', Wnormright(imp_fr)), 'color', [0, 0.8, 0])
+    %%	text(impact+5, 0.85*yl(2), sprintf('Both: %1.2f', Wnormboth(imp_fr)), 'color', [0, 0, 0])
     set(gca, 'xlim', [0 1.15])
-     box off
+    box off
 	print(fname_plot, '-dpdf')
 
 

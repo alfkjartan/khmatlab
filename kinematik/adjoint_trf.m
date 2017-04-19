@@ -48,15 +48,6 @@ tw1 = [v1;w1];
 
 g1 = expr(tw1, pi/4);
 
-[twn1, Ad_g1] = adjoint_trf(tw1, g1);
-
-if norm(tw1-twn1) > thr
-   disp('Test 1 failed.')
-   disp('Expected  '), tw1
-   disp('Found  '), twn1
-else
-   disp('Test 1 OK.')
-end
 
 %% Check that inverse adjoint is same as adjoint of inverse
 

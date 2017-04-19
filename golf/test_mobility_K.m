@@ -46,7 +46,7 @@ if test_double_hand
   toc()
   W2 = inv(Mbar2);
 
-  assert(W1(1:3,1:3), W2(1:3,1:3), 1e-12)
+  assert(W1(1:3,1:3), W2(1:3,1:3), 1e-11)
 
 
 
@@ -67,22 +67,44 @@ if test_double_hand
   end
   toc()
 
-  assert(W1(1:3, 1:3), W3, 1e-12)
+  assert(W1(1:3, 1:3), W3, 1e-9)
 
 
   [W4slask, W4] = golfer_mobility(gm, states);
 
-  assert(W3(1:3, 1:3), W4(1:3, 1:3), 1e-12)
+  assert(W3(1:3, 1:3), W4(1:3, 1:3), 1e-9)
 
 
   %% Test hypothesis that W = G*Jh*Yh*Jh'*G'
   %% FALSE!!
   W5 = Gtransp_ep'*JJ*inv(M)*JJ'*Gtransp_ep;
-  assert(W3(1:3, 1:3), W5(1:3, 1:3), 1e-12)
+  %%assert(W3(1:3, 1:3), W5(1:3, 1:3), 1e-12)
   
   %% Test inv( M - M*K'*inv(K*M*K')*K'*M ) = inv(M)
+  %% FALSE!!
   Minv2 = inv(M - M*K0'*inv(K0*M*K0')*K0*M);
-  assert(inv(M), Minv2, 1e-12)
+  %%assert(inv(M), Minv2, 1e-10)
+
+
+  %% New way to compute from reviewer 1
+
+  JL = Jh_ep(1:3,1:10,1);
+  JR = Jh_ep(4:6,11:20,1);
+  ML = Mh(1:10,1:10,1);
+  MR = Mh(11:20,11:20,1);
+
+  YL = inv(ML);
+  YR = inv(MR);
+
+  mL = inv(JL*YL*JL');
+  mR = inv(JR*YR*JR');
+
+  Wb = inv( mL + mR );
+
+  assert(W1(1:3,1:3), Wb, 1e-12)
+  
+  %JJ = Jh_ep(:,:,1);
+  %M = Mh(:,:,1);
 
 
 end
@@ -170,6 +192,6 @@ if test_single_hand
 
   assert(W5, inv(F), 1e-12)
 
-  
+
 
 end
