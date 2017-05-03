@@ -1,5 +1,5 @@
-function [im, C] = interaction_moments(gm, states);
-%  [im, C] = interaction_moments(gm, states);
+function [im, C, dofnames] = interaction_moments(gm, states, dofs2study);
+%  [im, C] = interaction_moments(gm, states [, dofs2study]);
 % Function that calculates the interaction moment and Coriolis
 % matrix for the kinematic model given the states sequence.
 %
@@ -7,9 +7,11 @@ function [im, C] = interaction_moments(gm, states);
 %    gm       ->  model struct. Assumed to be single chain
 %    states   ->  matrix (nsts x nfrs) with the estimated states of
 %                 the model.
+%    dofs2study -> list of names of dofs for which to calculate
+%                  interaction moments (optional) 
 %% Output
 %    im       <-  (nst x nfrs) matrix containing the interaction
-%                 moments for each degree of freedom
+%                 moments for each degree of freedom to study
 %    C        <-  (nst x nst x nfrs) 3d array containing the
 %                 Coriolis matrices
 
@@ -24,19 +26,30 @@ try
   nst = size(states,1)/2;
   nfrs = size(states,2);
 
-  [tws, g0, Mb] = flatten_km(gm);
+  [tws, g0, Mb, gcnames] = flatten_km(gm);
+  
+  if nargin < 3
+      dofs2study = gcnames;
+  end
+  
+  [dofnames_unsorted, thetas2study_unsorted] = intersect(gcnames(:,1), dofs2study);
+
+  [thetas2study, ids] = sort(thetas2study_unsorted);
+  dofnames = dofnames_unsorted(ids);
+
 
   theta = states(1:nst, :);
   thetadot = states(nst+1:end, :);
   
-
-  C = zeros(nst, nst, nfrs);
-  im = zeros(nst, nfrs);
+  ndofs2study = length(thetas2study);
+  
+  C = zeros(ndofs2study, ndofs2study, nfrs);
+  im = zeros(ndofs2study, nfrs);
   for i=1:nfrs
     Ci = manipulator_coriolis_flattened(Mb, tws, g0, theta(:,i), ...
-                                       thetadot(:,i));
-    C(:,:,i) = Ci;
-    im(:,i) = Ci*thetadot(:,i);
+                                       thetadot(:,i), []);
+    C(:,:,i) = Ci(thetas2study, thetas2study);
+    im(:,i) = Ci(thetas2study, :)*thetadot(:,i);
   end
   
 catch

@@ -95,7 +95,7 @@ try
       
     end
     
-    plot(T1,conversion*states(i,:));
+    plot(T1,conversion*states(i,:)); 
    
     ylabel(ystr)
     xlabel('Frame');

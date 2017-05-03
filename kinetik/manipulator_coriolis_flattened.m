@@ -13,6 +13,7 @@ function C= manipulator_coriolis_flattened(Mb, tws, g0, theta, ...
 %    theta      ->  The joint angles, (ndofs x 1)
 %    AA         ->  Optional, 6 x 6 x ndofs x ndofs array of
 %                   adjoint transformations
+%                   
 %% Output
 %    M          <-  The generalized manipulator inertia matrix
 %                   (ndofs x ndofs ) i.e. the inertia matrix in joint space.
@@ -26,9 +27,13 @@ else
 
     ndofs = size(theta, 1);
     
-    Mlinks = link_inertia_flattened(Mb, g0)
+    Mlinks = link_inertia_flattened(Mb, g0);
     
     if nargin < 6
+        AA = [];
+    end
+    
+    if isempty(AA)
         % Calculate all the adjoint transformations
         AA = zeros(6, 6, ndofs, ndofs);
         for i = 1:ndofs
@@ -38,21 +43,30 @@ else
         end
     end
     
-        
+    
+    % Calculate all the partial derivatives
+    dMdth = zeros(ndofs, ndofs, ndofs);
+    for i=1:ndofs
+        for j=1:ndofs
+            for k=1:ndofs
+                dMdth(i,j,k) = dMdtheta(i,j,k, AA, tws, Mlinks);
+            end
+        end
+    end
+    
     C = zeros(ndofs, ndofs);
 
     for i=1:ndofs
         for j=1:ndofs
             for k = 1:ndofs
-                C(i,j) = C(i,j) + (dMdtheta(i,j,k, AA, tws, Mlinks) ...
-                                   + dMdtheta(i,k,j, AA, tws, Mlinks) ...
-                                   - dMdtheta(k,j,i, AA, tws, ...
-                                              Mlinks))*thetadot(k);
+                C(i,j) = C(i,j) ... 
+                    + ( dMdth(i,j,k) + dMdth(i,k,j) - dMdth(k,j,i) )*thetadot(k);
+
             end
         end
     end
     
-    C = 0.5*C
+    C = 0.5*C;
     
 end
 end

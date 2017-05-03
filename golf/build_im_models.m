@@ -1,10 +1,13 @@
-function [gmleft, gmright, gmboth, gmclub] = build_three_models(refdata, trialdata, bodymass)
-%  [gmleft, gmright, gmboth, gmclub] = build_three_models(refdata, trialdata, bodymass)
+function [gmleft, gmright, gmbase, gmclub] = build_im_models(refdata, trialdata, bodymass)
+%  [gmleft, gmright, gmboth, gmclub] = build_im_models(refdata, trialdata, bodymass)
 %
-% Returns three kinematic models for the golf study:
-%   gmleft     <-  Consists of the left upper arm, forearm and hand
-%   gmright    <-  Consists of the right upper arm, forearm and hand
-%   gmboth     <-  The two above, without the club. The inertia of the club needs to be
+% Returns three kinematic models for the study of interaction
+% moments in golf
+%   gmleft     <-  Consists of a mass-less hip, a mass-less trunk,
+%                  left upper arm, forearm and hand 
+%   gmright    <-  Consists of a mass-less hip, a mass-less trunk,
+%                  right upper arm, forearm and hand 
+%   gmbase     <-  The two above, without the club. The inertia of the club needs to be
 %                  taken into account separately.
 %   gmclub     <-  Model of the club.
 % Note that the grip is assumed to be firm, so that the club and hand(s) form one segment.
@@ -33,8 +36,8 @@ function [gmleft, gmright, gmboth, gmclub] = build_three_models(refdata, trialda
 %                          Typically only given for the end segment.
 
 % Kjartan Halvorsen
-% 2013-08-23
-% Based on build_golf_model_w_inertia
+% 2017-04-24
+% Based on build_three_models and build_golf_model_w_inertia
   
 % Find suitable frame to use as address position
 
@@ -480,48 +483,108 @@ club.markers = { 'CLUB_1', club_1
 endpointstr = 'ClubCoM';
 
 
-%%%%%%%%%%%%%%%%%%%%%
-% Need also a dummy trunk segment to act as root
-%%%%%%%%%%%%%%%%%%%%%
+%% Hip and trunk models
+% The root segment: pelvis
+pelvis.name = 'pelvis';
+                                             
+e_x = e_LR;
+e_y = e_PA;
+e_z = e_IS;
 
-trunk.CoM = zeros(3,1);
-trunk.mass = 0;
-trunk.localframe = eye(4);
-trunk.dof = {[], []};
-trunk.states = {};
-trunk.moment_of_inertia = zeros(3,3);
-trunk.generalized_inertia = zeros(6,6);
-trunk.g0 = eye(4);
+pelvis.localframe = cat(1, cat(2, e_x, e_y, e_z, midpelvis),...
+			[0 0 0 1]);
+pelvis.dof = {[1 2 3], [1 2 3]};
+
+%states with typical range of motion
+pelvis.states = {'pelvis x', 0.0821
+		 'pelvis y', 0.0640
+		 'pelvis z', 0.0770
+		 'pelvis tilt', 0.1648
+		 'pelvis obliqueity', 0.2129
+		 'pelvis rotation', 0.3120};
+
+% Tracking markers
+pelvis.markers = {'Pelvis_1' pelvis_1
+		  'Pelvis_2' pelvis_2
+		  'Pelvis_3' pelvis_3};
+
+% Using LPT (lower part of trunk) data from de Leva
+pelvis.length = 146*1e-3;
+pelvis.mass = 0.112*bodymass;
+pelvis.CoM = midpelvis;
+pelvis.g0 = pelvis.localframe; %% Local coordinate system with origin at CoM of segment.
+pelvis.moment_of_inertia = pelvis.mass ...
+			   * diag( (pelvis.length*[0.615 0.551 0.587]).^2 );
+pelvis.generalized_inertia = [pelvis.mass*eye(3) zeros(3,3)
+			      zeros(3,3)  pelvis.moment_of_inertia];
+
+% The trunk
+trunk.name = 'trunk';
+trunk_center = midpelvis; % Assume rotations around a point in
+                              % the middle of the asis-psis plane.
+trunk.localframe = cat(1, cat(2, e_x, e_y, e_z, trunk_center),...
+		       [0 0 0 1]);
+trunk.dof = {[2 1 3], []}; % The order of (euler) angles is y-x-z
+trunk.states = {'trunk tilt', 0.2541
+	        'trunk obliquety', 0.2468
+	        'trunk rotation', 0.3226};
+trunk.markers = {'Upper_Torso_1', ut_1
+		 'Upper_Torso_2', ut_2
+		 'Upper_Torso_3', ut_3};
+
+% Using MPT together with UPT (middle and upper part of trunk) data from de Leva
+% Ignoring the head, since it is close to still during the movement.
+mpt.length = 216*1e-3;
+mpt.mass = 0.163*bodymass;
+mpt.CoM = midpelvis + 0.4*e_IS*mpt.length;
+mpt.moment_of_inertia = mpt.mass  ...
+			* diag( (mpt.length*[0.482 0.383 0.468]).^2 );
+upt.length = 170*1e-3;
+upt.mass = 0.16*bodymass;
+upt.CoM = midtrunk - 0.3*e_IS*upt.length;
+upt.moment_of_inertia = upt.mass  ...
+			* diag( (upt.length*[0.716 0.454 0.659]).^2 );
+trunk.mass = mpt.mass + upt.mass;
+trunk.CoM = (mpt.CoM*mpt.mass + upt.CoM*upt.mass) / trunk.mass;
+trunk.g0 = cat(1, cat(2, e_LR, e_PA, e_IS, trunk.CoM), [0 0 0 1]);
+vm = mpt.CoM - trunk.CoM;
+vu = upt.CoM - trunk.CoM;
+trunk.moment_of_inertia = mpt.moment_of_inertia + mpt.mass * diag( [vm(2:3)'*vm(2:3)
+								    vm([1 3])'*vm([1 3])
+								    vm([1 2])'*vm([1 2])] ) ...
+			  +upt.moment_of_inertia + upt.mass * diag( [vu(2:3)'*vu(2:3)
+								    vu([1 3])'*vu([1 3])
+								    vu([1 2])'*vu([1 2])] );
+trunk.generalized_inertia = [trunk.mass*eye(3) zeros(3,3)
+			     zeros(3,3) trunk.moment_of_inertia];
+
+
+%% Need mass-less trunk and hip segments to act as root
+pelvis_nomass = pelvis;
+pelvis_nomass.moment_of_inertia = zeros(3,3);
+pelvis_nomass.mass = 0;
+pelvis_nomass.generalized_inertia = zeros(6,6);
+
+trunk_nomass = trunk;
+trunk_nomass.mass = 0;
+trunk_nomass.moment_of_inertia = zeros(3,3);
+trunk_nomass.generalized_inertia = zeros(6,6);
 
 
 %----------------------------------------------------------------
 % Define the complete models
 %----------------------------------------------------------------
 
-[gmboth.twists, gmboth.p0, gmboth.gcnames, gmboth.jcs, gmboth.segm_names, gmboth.CoM, radius, gmboth.mass, gmboth.g0, gmboth.inertia, gmboth.object_frame, gmboth.objectcenter] = build_model(trunk);
-[gmleft.twists, gmleft.p0, gmleft.gcnames, gmleft.jcs, gmleft.segm_names, gmleft.CoM, ...
- radius_la, gmleft.mass, gmleft.g0, gmleft.inertia, gmleft.object_frame, gmleft.objectcenter] =  build_model(luarm, llarm, lhand);
-[gmright.twists, gmright.p0, gmright.gcnames, gmright.jcs, gmright.segm_names, gmright.CoM, ...
- radius_la, gmright.mass, gmright.g0, gmright.inertia, gmright.object_frame, gmright.objectcenter] =  build_model(ruarm, rlarm, rhand);
+[gmbase.twists, gmbase.p0, gmbase.gcnames, gmbase.jcs, gmbase.segm_names, gmbase.CoM, radius, gmbase.mass, gmbase.g0, gmbase.inertia, gmbase.object_frame, gmbase.objectcenter] = build_model(pelvis,trunk);
 
-gmboth.twists{2} = gmleft.twists;
-gmboth.twists{3} = gmright.twists;
-gmboth.p0{2} = gmleft.p0;
-gmboth.p0{3} = gmright.p0;
-gmboth.jcs{2} = gmleft.jcs;
-gmboth.jcs{3} = gmright.jcs;
-gmboth.CoM{2} = gmleft.CoM;
-gmboth.CoM{3} = gmright.CoM;
-gmboth.g0{2} = gmleft.g0;
-gmboth.g0{3} = gmright.g0;
-gmboth.inertia{2} = gmleft.inertia;
-gmboth.inertia{3} = gmright.inertia;
-gmboth.object_frame{2} = gmleft.object_frame;
-gmboth.object_frame{3} = gmright.object_frame;
-gmboth.objectcenter{2} = gmleft.objectcenter;
-gmboth.objectcenter{3} = gmright.objectcenter;
-gmboth.gcnames = cat(1, gmboth.gcnames, gmleft.gcnames, gmright.gcnames);
-gmboth.segm_names = cat(1, gmboth.segm_names, gmleft.segm_names, gmright.segm_names);
+[gmleft.twists, gmleft.p0, gmleft.gcnames, gmleft.jcs, gmleft.segm_names, gmleft.CoM, ...
+ radius_la, gmleft.mass, gmleft.g0, gmleft.inertia, gmleft.object_frame, ...
+ gmleft.objectcenter] =  build_model(pelvis_nomass, trunk_nomass, luarm, llarm, lhand);
+
+[gmright.twists, gmright.p0, gmright.gcnames, gmright.jcs, gmright.segm_names, gmright.CoM, ...
+ radius_la, gmright.mass, gmright.g0, gmright.inertia, ...
+ gmright.object_frame, gmright.objectcenter] =  build_model(pelvis_nomass, trunk_nomass,...
+                                                  ruarm, rlarm, rhand);
 
 
 [gmclub.twists, gmclub.p0, gmclub.gcnames, gmclub.jcs, gmclub.segm_names, gmclub.CoM, radius, gmclub.mass, gmclub.g0, gmclub.inertia, gmclub.object_frame, gmclub.objectcenter] = build_model(club);

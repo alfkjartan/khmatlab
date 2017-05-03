@@ -1,4 +1,4 @@
-function [tws, g0, Mb] = flatten_km(km)
+function [tws, g0, Mb, gcnames] = flatten_km(km)
 % 
 % Returns a flattened version of the kinematic model km. By flatten
 % means that the kinematic chain is represented as a series of
@@ -17,6 +17,7 @@ function [tws, g0, Mb] = flatten_km(km)
 %    tws  <-  Array of twists (6 x ndofs)
 %    g0   <-  Array of g0s (4 x 4 x ndofs)
 %    Mb   <-  Array of local inertia matrices (6 x 6 x ndofs)
+%    gcnames <- list of names of the dofs
 
 %% Kjartan Halvorsen
 %  2017-03-20
@@ -28,14 +29,15 @@ else
     tws = vee(unravel(km.twists));
     ndofs = size(tws, 2);
 
-    g0 = zeros(4,4,ndofs);
+    g0 = repmat(eye(4), [1,1,ndofs]);
     g0_tmp = unravel(km.g0);
     g0(:,:,linkinds) = g0_tmp;
 
     Mb = zeros(6,6,ndofs);
     Mb_tmp = unravel(km.inertia);
     Mb(:,:,linkinds) = Mb_tmp;
-    
+
+    gcnames = km.gcnames;
     
 end
 

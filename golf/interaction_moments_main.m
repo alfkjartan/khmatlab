@@ -6,6 +6,25 @@
 % Kjartan Halvorsen
 % 2017-04-19
 
+% The degrees of freedom to include in the analysis of interaction moments
+% Based on the set of dofs that contributed almost all clubhead
+% speed in the ISBS 2012 paper
+dofs2study = {'pelvis obliquety', ...
+              'pelvis rotation', ...
+              'trunk rotation', ...
+              'left shoulder flexion', ...
+              'left shoulder abduction', ...
+              'left shoulder rotation', ...
+              'left elbow rotation', ...
+              'left wrist flexion', ...
+              'left wrist abduction', ...
+              'right shoulder flexion', ...
+              'right shoulder abduction', ...
+              'right shoulder rotation', ...
+              'right elbow flexion', ...
+              'right wrist flexion', ...
+              'right wrist abduction'};
+              
 
 debug = 1;
 
@@ -344,7 +363,7 @@ startFrame.SP.Filefull2=410;
 % startFrame.SP.Filefull3=410;
 startFrame.SP.Filefull3=100;
 
-usefps = (20); % Select all or part of data to process
+usefps = (2); % Select all or part of data to process
 %usetrials = (13:14);
 usetrials = (7);
 
@@ -353,16 +372,16 @@ close all
 
 % Names of markers to plot must match exactly with the names in the
 % c3d file.
-% markers2plot = {'L_HAND_1'
-% 	       'L_HAND_2'
-% 	       'L_HAND_3'
-% 	       'Club_1'
-% 	       'Club_2'
-% 	       'Club_3'
-%            'ClubCoM'};
-% for i=1:length(markers2plot)
-%   markers2plot{i,2} = figure('Name', markers2plot{i,1});
-% end
+ markers2plot = {'L_HAND_1'
+                 'L_HAND_2'
+                 'L_HAND_3'
+                 'Club_1'
+                 'Club_2'
+                 'Club_3'
+                 'ClubCoM'};
+ for i=1:length(markers2plot)
+   markers2plot{i,2} = figure('Name', markers2plot{i,1});
+ end
 
 
 % Names of joint angles to plot must match exactly with the names in the
@@ -408,6 +427,9 @@ angles2plot = {'pelvis x'
              'club_r tilt'
              'club_r yaw'
              'club_r rotation'};
+
+angles2plot = dofs2study;
+
 % for i=1:length(angles2plot)
 %   angles2plot{i,2} = figure('Name', angles2plot{i,1});
 % end
@@ -444,19 +466,6 @@ for fp=usefps
   bodymass = fps{fp,4};
   refdata = load(fullfile(datapth,fps{fp,2},fps{fp,3}));
     
-  A = zeros(length(usetrials), nst);
-  B = zeros(length(usetrials), nst);
-  C = zeros(length(usetrials), 1);
-  mep_rms_error = zeros(length(usetrials), 6);
-    
-  normdata_mepvel = zeros(100, 1, length(usetrials));
-  normnormdata_mepvel = zeros(100, nst, length(usetrials));
-  normdata = zeros(100, nst, length(usetrials));
-  normdata_states = zeros(100, nst*2, length(usetrials));
-  normnormdata = zeros(100, nst, length(usetrials));
-  normdata_markers = zeros(100, nm, length(usetrials));
-  
-  mean_res = zeros(length(usetrials),(length(usemdata)/3));
   
   for tr=usetrials
     
@@ -475,34 +484,26 @@ for fp=usefps
     % The trial data are needed because the position of the club
     % with respect to either hand is taken from the first frame
     % (address) of the trial file.
-    [gmleft, gmright, gmboth, gmclub] = ...
-       build_three_models(refdata, mdata, bodymass);
+    [gmleft, gmright, gmbase, gmclub] = ...
+       build_im_models(refdata, mdata, bodymass);
 
     
     [statesleft, dataframesleft] = track_golf_model(gmleft, mdata, filterbandwidth);
     [statesright, dataframesright] = track_golf_model(gmright, mdata, filterbandwidth);
+    [statesbase, dataframesbase] = track_golf_model(gmbase, mdata, filterbandwidth);
     
      if debug
          % Simulate models, generate trajectories of joint centers.
          % plot markers and check the residuals
-         [nstsboth, nfrsboth] = size(statesboth);
-         [msimboth, simnamesboth, objdboth, objnamesboth] = ...
-             sim_model(gmboth, statesboth(1:nstsboth/2,:), 'objectcenter');
          [nstsleft, nfrsleft] = size(statesleft);
          [msimleft, simnamesleft, objdleft, objnamesleft] = ...
              sim_model(gmleft, statesleft(1:nstsleft/2,:), 'objectcenter');
+
          [nstsright, nfrsright] = size(statesright);
          [msimright, simnamesright, objdright, objnamesright] = ...
              sim_model(gmright, statesright(1:nstsright/2,:), 'objectcenter');
-         [msimclub, simnamesclub, objdclub, objnamesclub] = ...
-             sim_model(gmclub, statesclub(1:6,:), 'objectcenter');
 
          % Plot results
-         y_observations=extractmarkers(mdata, simnamesboth);
-         y_observations(find(y_observations==0)) = NaN;
-         mse = plotmarkers(y_observations(find(dataframesboth),:), ...
-                           simnamesboth,...
-                           msimboth, simnamesboth, markers2plot, {'data', 'model'});
 
          y_observations=extractmarkers(mdata, simnamesleft);
          y_observations(find(y_observations==0)) = NaN;
@@ -517,14 +518,8 @@ for fp=usefps
                            simnamesright,...
                            msimright, simnamesright, markers2plot, {'data', 'model'});
          
-         y_observations=extractmarkers(mdata, simnamesclub);
-         y_observations(find(y_observations==0)) = NaN;
-         mse = plotmarkers(y_observations(find(dataframesclub),:), ...
-                           simnamesclub,...
-                           msimclub, simnamesclub, markers2plot, {'data', 'model'});
-         
          convert_radians = 1;
-         plotangles(statesboth, gmboth.gcnames(:,1), angles2plot, convert_radians);
+         %plotangles(statesleft, gmleft.gcnames(:,1), angles2plot, convert_radians);
 
      end
 
@@ -533,19 +528,53 @@ for fp=usefps
      % im is the interaction moment for each degree of freedom, C
      % is the Coriolis matrix, i.e. 
      %  im = C * \dot{q} 
-     [IMleft, Cleft] = interaction_moments(gmleft, statesleft);
-     [IMright, Cright] = interaction_moments(gmright, statesright);
+     [IMleft, Cleft, dofnamesLeft] = interaction_moments(gmleft, statesleft, dofs2study);
+     [IMright, Cright, dofnamesRight] = interaction_moments(gmright, statesright, dofs2study);
+     [IMbase, Cbase, dofnamesBase] = interaction_moments(gmbase, statesbase, dofs2study);
 
+     % Combine interaction terms for the generalized coordinates of
+     % the base model
+     nfrs = size(IMbase, 2);
+     nBaseStates = size(IMbase, 1);
+     nLeftArmStates = size(IMleft, 1) - nBaseStates;
+     nRightArmStates = size(IMright, 1) - nBaseStates;
+     
+     IMbaseLR = IMbase + IMleft(1:nBaseStates, :) ...
+         + IMright(1:nBaseStates, :);
+
+     % When calculating the Coriolis matrix, we assume the vector
+     % of joint velocities to be [\dot{q}_B, \dot{q}_L, \dot{q}_R]
+     CbaseLR = zeros(nBaseStates, ...
+                     nBaseStates+nLeftArmStates+nRightArmStates, ... 
+                     nfrs); 
+     CbaseLR(:,1:nBaseStates, :) = Cbase ...
+         + Cleft(1:nBaseStates, 1:nBaseStates,:) ...
+         + Cright(1:nBaseStates, 1:nBaseStates,:);
+     CbaseLR(:, nBaseStates+1:nBaseStates+nLeftArmStates,:) = ...
+         Cleft(1:nBaseStates, nBaseStates+1:end, :);
+     CbaseLR(:, nBaseStates+nLeftArmStates+1:end, :) = ...
+             Cright(1:nBaseStates, nBaseStates+1:end, :);
+             
 
      if debug
          % Plot the interaction moments
          figure(1)
          clf
-         plot(IMleft')
+         subplot(121)
+         plot(IMleft(nBaseStates+1:end,:)')
+         title('Interaction moments, left arm')
+         legend(dofnamesLeft{nBaseStates+1:end})
+         subplot(122)
+         plot(IMright(nBaseStates+1:end,:)')
+         legend(dofnamesRight{nBaseStates+1:end})
+         title('Interaction moments, right arm')
          
          figure(2)
          clf
-         plot(IMright')
+         plot(IMbaseLR')
+         title('Interaction moments, hip and trunk')
+         legend(dofnamesBase)
+         
      end
   end
 end
