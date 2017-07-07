@@ -1,10 +1,13 @@
-function [II, CoM, mass]  = combine_inertia(I1, CoM1, mass1, I2, CoM2, mass2)
+function [II, CoM, mass]  = combine_inertia(I1, CoM1, mass1, I2, ...
+                                            CoM2, mass2, refPoint)
 %%  [II, CoM, mass]  = combine_inertia(I1, CoM1, mass1, I2, CoM2, mass2)
-%% Combines the inertial parameters of two parts of the same rigid body. The CoM and
-%% inertia matrices must be with respect to the same coordinate system.
+% Combines the inertial parameters of two parts of the same rigid body. The CoM and
+% inertia matrices must be with respect to the same coordinate system.
+%
+% If refPoint is not given, compute wrt combined CoM.
 
 %% Kjartan Halvorsen
-%% 2013-08-23
+% 2013-08-23
 
 if (nargin == 0)
    do_unit_test();
@@ -19,25 +22,30 @@ else
   CoM = (CoM1*mass1 + CoM2*mass2) / mass;
 end
 
-v1 = CoM - CoM1;
-v2 = CoM - CoM2;
+if nargin < 7 
+ v1 = CoM - CoM1;
+ v2 = CoM - CoM2;
+else
+    v1 = refPoint - CoM1;
+    v2 = refPoint - CoM2;
+end
 
 %%II = I1 + I2 + mass1 * diag( [v1(2:3)'*v1(2:3)
-%%			      v1([1 3])'*v1([1 3])
-%%			      v1(1:2)'*v1(1:2)] ) ...
-%%    + mass2 * diag( [v2(2:3)'*v2(2:3)
-%%			      v2([1 3])'*v2([1 3])
-%%			      v2(1:2)'*v2(1:2)] );
+%			      v1([1 3])'*v1([1 3])
+%			      v1(1:2)'*v1(1:2)] ) ...
+%    + mass2 * diag( [v2(2:3)'*v2(2:3)
+%			      v2([1 3])'*v2([1 3])
+%			      v2(1:2)'*v2(1:2)] );
 II = I1 + I2 + mass1 * parallel_axis(v1) ...
              + mass2 * parallel_axis(v2);
 
 
 function JJ = parallel_axis(t)
 %% The unscaled change in moment of inertia because of translation of reference point
-%% t is the vector from old point to new
-%%JJ = [-(t(2)^2+t(3)^2) t(1)*t(2) t(1)*t(3)
-%%      t(1)*t(2) -(t(1)^2 + t(3)^2) t(2)*t(3)
-%%      t(1)*t(3) t(2)*t(3) -(t(1)^2 + t(2)^2)];
+% t is the vector from old point to new
+%JJ = [-(t(2)^2+t(3)^2) t(1)*t(2) t(1)*t(3)
+%      t(1)*t(2) -(t(1)^2 + t(3)^2) t(2)*t(3)
+%      t(1)*t(3) t(2)*t(3) -(t(1)^2 + t(2)^2)];
  
 JJ = t'*t*eye(3) - t*t';
 

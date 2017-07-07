@@ -1,17 +1,17 @@
 function [M, Mtrue] = generalized_manipulator_inertia(km, states)
-%%  M = generalized_inertia(km, states)
-%% Returns the generalized inertia for the manipulator described by the model struct km.
-%% See eq (4.19) and eq (4.29) in Murray, Li, Sastry 
-%%
-%% Input
-%%    km         ->  The model struct
-%%    states     ->  The sequence of states, (nsts x nfr)
-%% Output
-%%    M          <-  The generalized manipulator inertia matrix (nsts x nsts x nfr). That is
-%%                   the inertia matrix in joint space.
+%  M = generalized_inertia(km, states)
+% Returns the generalized inertia for the manipulator described by the model struct km.
+% See eq (4.19) and eq (4.29) in Murray, Li, Sastry 
+%
+% Input
+%    km         ->  The model struct
+%    states     ->  The sequence of states, (nsts x nfr)
+% Output
+%    M          <-  The generalized manipulator inertia matrix (nsts x nsts x nfr). That is
+%                   the inertia matrix in joint space.
 
 %% Kjartan Halvorsen
-%% 2013-05-29
+% 2013-05-29
 
 if nargin == 0
    [M, Mtrue] = do_unit_test();

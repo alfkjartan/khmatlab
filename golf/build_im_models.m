@@ -201,12 +201,18 @@ luarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ghjc_l),...
 		      [0 0 0 1]);
 luarm.dof = {[1 2 3], [1 2 3]};
 %            'left shoulder flexion', 0.6668
-luarm.states = {'left shoulder x', 0.1050
-		'left shoulder y', 0.1148
-		'left shoulder z', 0.0850
-		'left shoulder flexion', 0.6668
-		'left shoulder abduction', 0.7578
-		'left shoulder rotation', 0.5297};
+luarm.states = {'left shoulder x', 0.1050, ...
+                luarm.localframe(1:3, 1)
+		'left shoulder y', 0.1148, ...
+                luarm.localframe(1:3, 2)            
+		'left shoulder z', 0.0850, ...
+                luarm.localframe(1:3, 3)               
+		'left shoulder flexion', 0.6668, ...
+                luarm.localframe(1:3, 1)                
+		'left shoulder abduction', 0.7578, ...
+                luarm.localframe(1:3, 2)                
+		'left shoulder rotation', 0.5297, ...
+                luarm.localframe(1:3, 3)};
 
 luarm.markers = {'L_Upper_Arm_1' , uarm_1_l
 		'L_Upper_Arm_2' , uarm_2_l
@@ -234,8 +240,10 @@ llarm.name = 'left_forearm';
 llarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ejc_l),...
 		      [0 0 0 1]);
 llarm.dof = {[1 3], []};
-llarm.states = {'left elbow flexion', 0.5708
-	      'left elbow rotation', 0.6794};
+llarm.states = {'left elbow flexion', 0.5708, ...
+                llarm.localframe(1:3, 1)
+                'left elbow rotation', 0.6794, ...
+               llarm.localframe(1:3, 3)};
 llarm.markers = {}; % No markers to track the forearm
 
 %% Data from de Leva
@@ -266,8 +274,10 @@ lhand.name = 'left_hand';
 lhand.localframe = cat(1, cat(2, e_x, e_y, e_z, wjc_l),...
 		      [0 0 0 1]);
 lhand.dof = {[1 2], []};
-lhand.states = {'left wrist flexion', 0.5369
-	      'left wrist abduction', 0.8487};
+lhand.states = {'left wrist flexion', 0.5369, ...
+                lhand.localframe(1:3, 1)
+	      'left wrist abduction', 0.8487, ...
+               lhand.localframe(1:3, 2)};
 lhand.markers = {'L_Hand_1', hand_1_l
 		 'L_Hand_2', hand_2_l
 		 'L_Hand_3', hand_3_l
@@ -313,12 +323,19 @@ e_y = cross(e_z, e_x);
 ruarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ghjc_r),...
 		      [0 0 0 1]);
 ruarm.dof = {[1 2 3], [1 2 3]};
-ruarm.states = {'right shoulder x', 0.2678
-	       'right shoulder y', 0.1001
-	       'right shoulder z', 0.1048
-	       'right shoulder flexion', 0.5174
-	       'right shoulder abduction', 0.3660
-	       'right shoulder rotation', 1};
+ruarm.states = {'right shoulder x', 0.2678,...
+                ruarm.localframe(1:3, 1)
+	       'right shoulder y', 0.1001,...
+                ruarm.localframe(1:3, 2)
+	       'right shoulder z', 0.1048,...
+                ruarm.localframe(1:3, 3)
+	       'right shoulder flexion', 0.5174, ...
+                ruarm.localframe(1:3, 1)
+	       'right shoulder abduction', 0.3660, ...
+                ruarm.localframe(1:3, 2)
+	       'right shoulder rotation', 1, ...
+                ruarm.localframe(1:3, 3)
+               };
             
 ruarm.markers = {'R_Upper_Arm_1' , uarm_1_r
 		'R_Upper_Arm_2' , uarm_2_r
@@ -347,8 +364,10 @@ rlarm.name = 'right_forearm';
 rlarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ejc_r),...
 		      [0 0 0 1]);
 rlarm.dof = {[1 3], []};
-rlarm.states = {'right elbow flexion', 0.7490
-	      'right elbow rotation', 0.2101};
+rlarm.states = {'right elbow flexion', 0.7490, ...
+                rlarm.localframe(1:3, 1)
+	      'right elbow rotation', 0.2101, ...
+                rlarm.localframe(1:3, 3)};
 rlarm.markers = {}; % No markers to track the forearm
 
 %% Data from de Leva
@@ -379,8 +398,10 @@ rhand.name = 'right_hand';
 rhand.localframe = cat(1, cat(2, e_x, e_y, e_z, wjc_r),...
 		      [0 0 0 1]);
 rhand.dof = {[1 2], []};
-rhand.states = {'right wrist flexion', 0.9170
-	      'right wrist abduction', 0.5507};
+rhand.states = {'right wrist flexion', 0.9170, ...
+                rhand.localframe(1:3, 1)
+	      'right wrist abduction', 0.5507, ...
+                rhand.localframe(1:3, 2)};
 rhand.markers = {'R_Hand_1', hand_1_r
 		 'R_Hand_2', hand_2_r
 		 'R_Hand_3', hand_3_r
@@ -469,12 +490,18 @@ club.g0 = cat(1, cat(2, e_club_x, e_club_pa, e_shaft, club.CoM),...
 club.name = 'club';
 club.localframe = club.object_frame;
 club.dof = {[1 2 3], [1 2 3]};
-club.states = { 'club ml trl', 1
-	       'club ap trl', 0.5
-	       'club ax trl', 0.5
-	       'club ml rot', pi
-	       'club ap rot', pi
-	       'club ax rot', pi};
+club.states = { 'club ml trl', 1, ...
+                club.localframe(1:3, 1)
+	       'club ap trl', 0.5, ...
+                club.localframe(1:3, 2)                
+	       'club ax trl', 0.5, ...
+                club.localframe(1:3, 3)                
+	       'club ml rot', pi, ...
+                club.localframe(1:3, 1)                
+	       'club ap rot', pi, ...
+                club.localframe(1:3, 2)                
+	       'club ax rot', pi, ...
+                club.localframe(1:3, 3) };
 
 club.markers = { 'CLUB_1', club_1
 		 'CLUB_2', club_2
@@ -496,12 +523,18 @@ pelvis.localframe = cat(1, cat(2, e_x, e_y, e_z, midpelvis),...
 pelvis.dof = {[1 2 3], [1 2 3]};
 
 %states with typical range of motion
-pelvis.states = {'pelvis x', 0.0821
-		 'pelvis y', 0.0640
-		 'pelvis z', 0.0770
-		 'pelvis tilt', 0.1648
-		 'pelvis obliqueity', 0.2129
-		 'pelvis rotation', 0.3120};
+pelvis.states = {'pelvis x', 0.0821, ...
+                pelvis.localframe(1:3, 1)                 
+		 'pelvis y', 0.0640, ...
+                pelvis.localframe(1:3, 2)                 
+		 'pelvis z', 0.0770, ...
+                pelvis.localframe(1:3, 3)                 
+		 'pelvis tilt', 0.1648, ...
+                pelvis.localframe(1:3, 1)                 
+		 'pelvis obliqueity', 0.2129, ...
+                pelvis.localframe(1:3, 2)                 
+		 'pelvis rotation', 0.3120, ...
+                pelvis.localframe(1:3, 3)};
 
 % Tracking markers
 pelvis.markers = {'Pelvis_1' pelvis_1
@@ -525,9 +558,12 @@ trunk_center = midpelvis; % Assume rotations around a point in
 trunk.localframe = cat(1, cat(2, e_x, e_y, e_z, trunk_center),...
 		       [0 0 0 1]);
 trunk.dof = {[2 1 3], []}; % The order of (euler) angles is y-x-z
-trunk.states = {'trunk tilt', 0.2541
-	        'trunk obliquety', 0.2468
-	        'trunk rotation', 0.3226};
+trunk.states = {'trunk tilt', 0.2541, ...
+                trunk.localframe(1:3, 2)                
+	        'trunk obliquety', 0.2468, ...
+                trunk.localframe(1:3, 1)                
+	        'trunk rotation', 0.3226, ...
+                trunk.localframe(1:3, 3)};
 trunk.markers = {'Upper_Torso_1', ut_1
 		 'Upper_Torso_2', ut_2
 		 'Upper_Torso_3', ut_3};

@@ -11,16 +11,20 @@ function [im, C, dofnames] = interaction_moments(gm, states, dofs2study);
 %                  interaction moments (optional) 
 %% Output
 %    im       <-  (nst x nfrs) matrix containing the interaction
-%                 moments for each degree of freedom to study
+%                 moments for each degree of freedom to study. The sign
+%                 corresponds to the sign of a muscle torque acting over
+%                 the same joint.
 %    C        <-  (nst x nst x nfrs) 3d array containing the
-%                 Coriolis matrices
+%                 Coriolis matrices. These have sign corresponding to the
+%                 coriolis term in the left hand side of the equations of
+%                 motion M(q)\ddot{q} + C(q, \dot{q})\dot{q} + G(q) = tau
 
 
 % Kjartan Halvorsen
 % 2017-04-19
 
 
-try
+%try
 
   % The endpoint path and mechanism Jacobian
   nst = size(states,1)/2;
@@ -29,7 +33,7 @@ try
   [tws, g0, Mb, gcnames] = flatten_km(gm);
   
   if nargin < 3
-      dofs2study = gcnames;
+      dofs2study = gcnames(:,1);
   end
   
   [dofnames_unsorted, thetas2study_unsorted] = intersect(gcnames(:,1), dofs2study);
@@ -52,6 +56,7 @@ try
     im(:,i) = Ci(thetas2study, :)*thetadot(:,i);
   end
   
-catch
-  keyboard
-end
+  im = -im;
+%catch
+%  keyboard
+%end
