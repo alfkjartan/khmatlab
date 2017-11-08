@@ -1,16 +1,27 @@
-% Script interaction_moments_main
-% Tracks joint angles and computes interaction moments 
-
-% Based on track_main_FT
+%% Script interaction_moments_test
+%
+% Tests the interaction moments calculations, by simulating a
+% simple test case: All angles constant zero, except sinsuoidal
+% rotation of the trunk.
 
 % Kjartan Halvorsen
-% 2017-04-19
+% 2017-07-04
 
 % The degrees of freedom to include in the analysis of interaction moments
 % Based on the set of dofs that contributed almost all clubhead
 % speed in the ISBS 2012 paper
 close all
 clear all
+
+omega = 2; % rad/s of sinusoid
+amplitude = pi/2; % Amplitude of trunk rotation
+dt = 0.01; % Sampling time
+N = 80;  % Number of samples
+ 
+tt = (0:(N-1))*dt;
+rotation = amplitude * sin(omega*tt);
+angvel = amplitude*omega*cos(omega*tt); % Why cosine here?
+angacc = -amplitude*omega^2*sin(omega*tt);
 
 dofs2study = {'pelvis obliquety', ...
               'pelvis rotation', ...
@@ -31,26 +42,9 @@ dofs2study = {'pelvis obliquety', ...
 
 debug = 1;
 
-filterbandwidth = 1250;  % Scales the process noise covariance
-                      % matrix. Increase the value for higher
-                      % bandwidth (less smoothing effect), lower
-                      % for more smoothing.
-
-datapth = ['C:\Users\fredrikt\Documents\MATLAB\EndpointContributions'];
+%datapth = ['C:\Users\fredrikt\Documents\MATLAB_OLD\EndpointContributions'];
 datapth = ['/home/kjartan/Dropbox/SAS/Mobility'];
 
-% Initials, folder name and reference mat-file
-% fps = {'AH', 'AH', 'wedgemodel_ah.mat'
-%        'AW', 'AW', 'wedgemodel_aw.mat'
-%        'DK', 'DK', 'wedgemodel_dk.mat'
-%        'EE', 'EE', 'wedgemodel_ee.mat'
-%        'GN', 'GN', 'wedgemodel_gn.mat'
-%        'JJ', 'JJ', 'wedgemodel_jj.mat'
-%        'KH', 'KH', 'wedgemodel_kh.mat'
-%        'MBE', 'MBE', 'wedgemodel_mbe.mat'
-%        'SN', 'SN', 'wedgemodel_sn.mat'
-%        'SP', 'SP', 'wedgemodel_sp.mat'};
-   
 % Initials, folder name, reference mat-file and body mass
 fps = {'AH', 'AH', 'wedgemodel_AH.mat', 80
        'AW', 'AW', 'wedgemodel_aw.mat', 80
@@ -67,7 +61,7 @@ fps = {'AH', 'AH', 'wedgemodel_AH.mat', 80
        'LJ', 'LJ', 'wedgemodel_lj.mat', 80
        'MW', 'MW', 'wedgemodel_mw.mat', 80
        'AL', 'AL', 'wedgemodel_al.mat', 80
-       'EA', 'EA', 'wedgemodel_EA.mat', 80
+       'EA', 'EA', 'wedgemodel_ea.mat', 80
        'FB', 'FB', 'wedgemodel_fb.mat', 80
        'MB', 'MB', 'wedgemodel_mb.mat', 80
        'NB', 'NB', 'wedgemodel_nb.mat', 80
@@ -83,22 +77,6 @@ trials = {'File251.c3d'
 	  'Filefull2.c3d'
 	  'Filefull3.c3d'};
   
-%   trials = {'File251.c3d'
-% 	  'File252.c3d'
-% 	  'File253.c3d'
-% 	  'File401.c3d'
-% 	  'File402.c3d'
-% 	  'File403.c3d'
-% 	  'File551.c3d'
-% 	  'File552.c3d'
-% 	  'File553.c3d'
-% 	  'File701.c3d'
-% 	  'File702.c3d'
-% 	  'File703.c3d'
-% 	  'Filefull1.c3d'
-% 	  'Filefull2.c3d'
-% 	  'Filefull3.c3d'};
-
 useCustomStartFrame = 1;
 
 startFrame.DP.File251=10;
@@ -165,7 +143,7 @@ startFrame.MW.Filefull1=450;
 startFrame.MW.Filefull2=400;
 startFrame.MW.Filefull3=350;
 
-startFrame.MH.File251=40;   
+startFrame.MH.File251=40;
 startFrame.MH.File401=120;
 startFrame.MH.File551=190;
 startFrame.MH.File701=350;
@@ -366,26 +344,9 @@ startFrame.SP.Filefull2=410;
 % startFrame.SP.Filefull3=410;
 startFrame.SP.Filefull3=100;
 
-usefps = [16]; % Select all or part of data to process
+usefps = (2); % Select all or part of data to process
 %usetrials = (13:14);
-usetrials = [8];
-
-% Close all open plot windows
-close all
-
-% Names of markers to plot must match exactly with the names in the
-% c3d file.
- markers2plot = {'L_HAND_1'
-                 'L_HAND_2'
-                 'L_HAND_3'
-                 'Club_1'
-                 'Club_2'
-                 'Club_3'
-                 'ClubCoM'};
-markers2plot = {'L_HAND_1'}; 
-for i=1:length(markers2plot)
-   markers2plot{i,2} = figure('Name', markers2plot{i,1});
- end
+usetrials = (7);
 
 
 % Names of joint angles to plot must match exactly with the names in the
@@ -434,35 +395,6 @@ angles2plot = {'pelvis x'
 
 angles2plot = dofs2study;
 
-% for i=1:length(angles2plot)
-%   angles2plot{i,2} = figure('Name', angles2plot{i,1});
-% end
-
-% Names of joint angles to plot must match exactly with the names in the
-% build_golf_model.m file.
-% anglecontribs2plot = {'pelvis rotation'
-% 		    'trunk rotation'
-% 		    'left shoulder flexion'
-%             'left shoulder abduction'
-%             'left shoulder rotation'
-% 		    'left elbow flexion'
-%             'left elbow rotation'
-% 		    'left wrist flexion'
-% 		    'left wrist abduction'};
-% 
-% for i=1:length(anglecontribs2plot)
-%   anglecontribs2plot{i,2} = figure('Name', ...
-% 				   [anglecontribs2plot{i,1},' contrib']);
-% end
-
-usemdata = [76:84, 154:162, 61:69, 52:60, 10:18, 130:138, 121:129, 10:18
-            76:84, 157:165, 61:69, 52:60, 10:18, 130:138, 121:129, 10:18
-            76:84, 160:168, 61:69, 52:60, 10:18, 130:138, 121:129, 10:18
-            88:96, 166:174, 67:75, 58:66, 10:18, 142:150, 133:141, 10:18
-            91:99, 172:180, 70:78, 61:69, 10:18, 148:156, 139:147, 10:18
-            100:108, 181:189, 67:75, 58:66, 10:18, 154:162, 145:153, 10:18];
-        
-RMSE = zeros(length(usefps),(length(usemdata)/3));
 
 % Now process the data
 for fp=usefps
@@ -479,7 +411,7 @@ for fp=usefps
 
     if useCustomStartFrame
         trial = trials{tr}(1:end-4);
-        startfr = getfield(getfield(startFrame,fps{fp,1}), trial)
+        startfr = getfield(getfield(startFrame,fps{fp,1}), trial);
         mdata{2} = mdata{2}(startfr:end,:);
         mdata{1,1}{1,2} = num2str(length(mdata{2}));       
     end
@@ -490,46 +422,204 @@ for fp=usefps
     % (address) of the trial file.
     [gmleft, gmright, gmbase, gmclub] = ...
        build_im_models(refdata, mdata, bodymass);
-
+  
+    nstsleft = size(gmleft.gcnames, 1);
     
-    [statesleft, dataframesleft] = track_golf_model(gmleft, mdata, filterbandwidth);
-    [statesright, dataframesright] = track_golf_model(gmright, mdata, filterbandwidth);
-    [statesbase, dataframesbase] = track_golf_model(gmbase, mdata, filterbandwidth);
+    rotationind_left = find(ismember(gmleft.gcnames(:,1), 'trunk rotation'));
+    rotationind_base = find(ismember(gmbase.gcnames(:,1), 'trunk rotation'));
     
-     if debug
-         % Simulate models, generate trajectories of joint centers.
-         % plot markers and check the residuals
-         [nstsleft, nfrsleft] = size(statesleft);
-         [msimleft, simnamesleft, objdleft, objnamesleft] = ...
-             sim_model(gmleft, statesleft(1:nstsleft/2,:), 'objectcenter');
+    flexind = find(ismember(gmleft.gcnames(:,1), 'left shoulder flexion'));
+    shoulderaddind = find(ismember(gmleft.gcnames(:,1), 'left shoulder adduction'));
+    elbowflexind = find(ismember(gmleft.gcnames(:,1), 'left elbow flexion'));
 
-         [nstsright, nfrsright] = size(statesright);
-         [msimright, simnamesright, objdright, objnamesright] = ...
-             sim_model(gmright, statesright(1:nstsright/2,:), 'objectcenter');
+    % Apply sinusoidal position and velocity in trunk rotation.
+    statesleft = zeros(nstsleft*2, N);
+    statesleft(rotationind_left, :) = rotation;
+    statesleft(nstsleft + rotationind_left, :) = angvel;
+    
+    % Constant 90 degrees in shoulder abduction
+    statesleft(shoulderaddind, :) = -pi/2;
+  
+    % And constant 90 degrees in elbow flexion - should give more effect
+    % form corilis, less from acc
+    statesleft(elbowflexind, :) = pi/2;
+    
+    
+    
+    nstsright = size(gmright.gcnames, 1);
+    statesright = zeros(nstsright*2, N);
+    nstsbase = size(gmbase.gcnames, 1);
+    statesbase = zeros(nstsbase*2, N);
+    statesbase(rotationind_base, :) = rotation;
+    statesbase(nstsbase + rotationind_base, :) = angvel;
+    
+    % Simulate models, generate trajectories of joint centers.
+    % plot markers and check the residuals
+    [nstsleft, nfrsleft] = size(statesleft);
+    [msimleft, simnamesleft, objdleft, objnamesleft] = ...
+        sim_model(gmleft, statesleft(1:nstsleft/2,:), 'jcs');
+    [msimleft, simnamesleft, comleft, comnamesleft] = ...
+        sim_model(gmleft, statesleft(1:nstsleft/2,:), 'CoM');
+    [msimleft, simnamesleft, flexaxisleft, flexaxisnames] = ...
+        sim_model(gmleft, statesleft(1:nstsleft/2,:), 'flexaxis');
+     
+    trunkind = find(ismember(objnamesleft, 'trunk_jc'));
+    shoulderind = find(ismember(objnamesleft, 'left_upper_arm_jc'));
+    elbowind = find(ismember(objnamesleft, 'left_forearm_jc'));
+    trunkjoint = objdleft(:, ...
+                             (trunkind-1)*3+1:(trunkind*3));
+    shoulderjoint = objdleft(:, ...
+                             (shoulderind-1)*3+1:(shoulderind*3));
+    elbowjoint = objdleft(:, ...
+                             (elbowind-1)*3+1:(elbowind*3));
 
-         % Plot results
+    comUpperarmind = find(ismember(comnamesleft, 'left_upper_arm_CoM'));
+    comForearmind = find(ismember(comnamesleft, 'left_forearm_CoM'));
+    comHandind = find(ismember(comnamesleft, 'left_hand_CoM'));
+    comUpperarmTimeseries = comleft(:, ...
+                             (comUpperarmind-1)*3+1:(comUpperarmind*3));
+    comForearmTimeseries = comleft(:, ...
+                             (comForearmind-1)*3+1:(comForearmind*3));
+    comHandTimeseries = comleft(:, ...
+                             (comHandind-1)*3+1:(comHandind*3));
+    
+    elbowflexaxisind = find(ismember(flexaxisnames, 'left_forearm_flexaxis'));
+    elbowflexaxis = flexaxisleft(:, ...
+                                    (elbowflexaxisind-1)*3+1:(elbowflexaxisind*3));
+    
+                         
+                         
+                         
+    rShoulderElbow = elbowjoint - shoulderjoint;
+    rTrunkShoulder = shoulderjoint - trunkjoint;
+    
+ 
+    % The movement of the vector rTrunkShoulder in the direction of
+    % the flexaxis should be constant
+    flexaxis = gmleft.gcnames{rotationind_left, 3};
+    tstMov = rTrunkShoulder * flexaxis;
+    figure(1)
+    clf
+    plot(tstMov)
+    title('This should be constant')
+    
+    
+    % The angular velocity and -acceleration vectors for the left arm
+    armVel = [flexaxis(1)*angvel', flexaxis(2)*angvel', flexaxis(3)*angvel']; % N x 3
+    armAcc = [flexaxis(1)*angacc', flexaxis(2)*angacc', flexaxis(3)*angacc']; % N x 3
+    
+    % The acceleration of the elbow joint
+    shoulderAcc = zeros(size(armAcc));
+    elbowAcc = zeros(size(armAcc));
+    elbowAccTangential = zeros(size(armAcc));
+    for i=1:N
+        shoulderAcc(i,:) = cross(armAcc(i,:), rTrunkShoulder(i,:)) ...
+            + cross(armVel(i,:), cross(armVel(i,:), ...
+                                                rTrunkShoulder(i,:)));
+        elbowAccTangential(i,:) = cross(armAcc(i,:), rShoulderElbow(i,:));
+        elbowAcc(i,:) = shoulderAcc(i,:) + cross(armAcc(i,:), rShoulderElbow(i,:)) ...
+            + cross(armVel(i,:), cross(armVel(i,:), ...
+                                                rShoulderElbow(i,:)));
+    end
 
-         y_observations=extractmarkers(mdata, simnamesleft);
-         y_observations(find(y_observations==0)) = NaN;
-         mse = plotmarkers(y_observations(find(dataframesleft),:), ...
-                           simnamesleft,...
-                           msimleft, simnamesleft, markers2plot, {'data', 'model'});
+    % Now calculated by twice numerical differentiation.
+    sfreq = 1.0/dt;
+    elbowVelTest = centraldiff(elbowjoint, sfreq);
+    elbowAccTest = centraldiff(elbowVelTest, sfreq);
+    shoulderVelTest = centraldiff(shoulderjoint, sfreq);
+    shoulderAccTest = centraldiff(shoulderVelTest, sfreq);
+    
+    figure(2)
+    clf
+    subplot(1,2,1)
+    plot(elbowAcc, 'linewidth', 4)
+    hold on
+    plot(elbowAccTest)
+    title(strcat('Elbow acc as  ', ...
+                 '$ a \times r + \omega \times \omega \times r$', ...
+                 ' (thick lines) and as $\frac{d^2}{dt^2} r$ ', ...
+                 '(thin lines)'), 'interpreter', 'latex')
+    
+    subplot(1,2,2)
+    plot(shoulderAcc, 'linewidth', 4)
+    hold on
+    plot(shoulderAccTest)
+    title(strcat('Shoulder acc as  ', ...
+                 '$ a \times r + \omega \times \omega \times r$', ...
+                 ' (thick lines) and as $\frac{d^2}{dt^2} r$ ', ...
+                 '(thin lines)'), 'interpreter', 'latex')
+    
+    
+    
+    % The moment of inertia of the forearm and hand wrt the elbow joint
+    
+    %                        pelv tru upper forearm
+    IForearm = gmleft.inertia{ 2 }{2 }{ 2  }{1}(4:6, 4:6);
+    IHand = gmleft.inertia{ 2 }{2 }{ 2  }{2}{1}(4:6, 4:6);
+    mForearm = gmleft.mass{4};
+    mHand = gmleft.mass{5};
+    comForearm = gmleft.CoM{ 2 }{2 }{ 2  }{1}{2};
+    comHand = gmleft.CoM{ 2 }{2 }{ 2  }{2}{1}{2};
+    elbowRef = gmleft.jcs{2}{2}{2}{1}{2};
 
-         %keyboard
-         y_observations=extractmarkers(mdata, simnamesright);
-         y_observations(find(y_observations==0)) = NaN;
-         mse = plotmarkers(y_observations(find(dataframesright),:), ...
-                           simnamesright,...
-                           msimright, simnamesright, markers2plot, {'data', 'model'});
-         
-         convert_radians = 1;
-         %plotangles(statesleft, gmleft.gcnames(:,1), angles2plot, convert_radians);
+    [ILArm3, comLArm, mLArm] = combine_inertia(IForearm, comForearm, ...
+                                              mForearm, ...
+                                              IHand, comHand, ...
+                                              mHand, elbowRef);
+    
+    
+    % Moment of inertia wrt elbow flexion axis
+    % Check against generalized inertia
+    Mleft = generalized_manipulator_inertia(gmleft, statesleft);
+    elbowflexaxislocal = gmleft.gcnames{elbowflexind, 3};
+    ILArm = elbowflexaxislocal'*ILArm3*elbowflexaxislocal;
+    Mleft(elbowflexind, elbowflexind, 1)
+    
+    comLArmTimeseries = (1/(mHand+mForearm)) ... 
+        * (mForearm*comForearmTimeseries + mHand* ...
+           comHandTimeseries);
+    
+    figure(3)
+    clf
+    plot(reshape(Mleft(elbowflexind, elbowflexind, :), [N,1]))
+    ylim([0.10, 0.11])
+    title(sprintf('Should be constant and close to %f', ILArm))
+    
+    
+    %% Angle between elbowflexaxis and rotation axis
+    angle = 180/pi * acos(elbowflexaxis*flexaxis);
+    
+    figure(11)
+    clf
+    plot(angle)
+    
+    %% The joint torque needed to produce the movement of the
+    %% forarm and hand
+    
+    rLArm = norm(comLArm - elbowRef);
+    rLArmTimeseries = comLArmTimeseries - elbowjoint;
+    elbowAccMoment = zeros(N, 1);
+    elbowAccMoment3 = zeros(N,3);
+    elbowflexacc = zeros(N,1);
+    
+    for i=1:N
+        elbowAccMoment3(i,:) = cross(rLArmTimeseries(i,:), ...
+                                  -mLArm*elbowAcc(i,:));     % Since we are observing in accelerating frame of ref
+        elbowAccMoment(i) = elbowAccMoment3(i,:)*elbowflexaxis(i,:)'; %% OBS: flexaxis not constant.
+        elbowflexacc(i) = armAcc(i,:)*elbowflexaxis(i,:)';
+    end
+    
+    %elbowAccMoment = norm(sqrt(sum(elbowAccTangential.^2, 2));
+    %tauLArm = ILArm*angacc' + mLArm*rLArm)*elbowAccNormTangential.*sign(angacc');
+    %tauLArm = ILArm*angacc' - mLArm*elbowAccMoment;
+    tauLArm = ILArm*elbowflexacc - elbowAccMoment; 
+    % Negative signs since elbow flexaxis is opposite direction of
+    % rotation axis
+    
 
-     end
 
-     %% Calculate the inertia matrices and its inverse needed to compute the
-     %% acceleration induced by the interaction moments 
-     nfrs = size(statesleft, 2);
+    %% The regular interaction moment calculations
+    nfrs = size(statesleft, 2);
      nBaseStates = size(statesbase, 1)/2;
      nLeftArmStates = size(statesleft, 1)/2 - nBaseStates;
      nRightArmStates = size(statesright, 1)/2 - nBaseStates;
@@ -541,17 +631,12 @@ for fp=usefps
      Mleft = generalized_manipulator_inertia(gmleft, statesleft);
      Mright = generalized_manipulator_inertia(gmright, statesright);
     
-     Mbase = Mbase(1:nBS, 1:nBS, :);
+     Mbase = Mbase(1:nBS, 1:nBS, :); % Kolla om inte har nBS rader från början
      Mleft = Mleft(1:nBS+nLS, 1:nBS+nLS, :);
      Mright = Mright(1:nBS+nRS, 1:nBS+nRS, :);
      
      
      % Combine
-     % The mass matrix for the complete model with base and the two arms is given by
-     %          [   M_B + M_L,B  + M_R,B      M_L,BL       M_R,BR ]
-     %       M =[   M_L,LB                    M_L,L        0      ]
-     %          [   M_R,RB                     0           M_R,R  ]        
- 
      ML_B = Mleft(1:nBS, 1:nBS,:);
      ML_L = Mleft(nBS+1:end,nBS+1:end,:);
      ML_BL = Mleft(1:nBS, nBS+1:end,:);
@@ -561,17 +646,19 @@ for fp=usefps
  
      Mall = zeros(nBS+nLS+nRS, nBS+nLS+nRS, nfrs);
      Mall(1:nBS, 1:nBS, :) = Mbase+ML_B+MR_B;
-     Mall(1:nBS, nBS+1:nBS+nLS, :) = ML_BL;
     
+     Mall(1:nBS, nBS+1:nBS+nLS, :) = ML_BL;
      Mall(nBS+1:nBS+nLS, 1:nBS,:) = permute(ML_BL, [2,1,3]);
      Mall(nBS+1:nBS+nLS, nBS+1:nBS+nLS,:) = ML_L;
  
+     Mall(1:nBS, nBS+nLS+1:end, :) = MR_BR;
      Mall(nBS+1+nLS:end, 1:nBS,:) = permute(MR_BR, [2,1,3]);
      Mall(nBS+1+nLS:end, nBS+1+nLS:end,:) = MR_R;
      
+     
      % And the joint accelerations
      freq=getvalue(mdata{1},'FREQUENCY');      % The sampling time
-     if isstr(freq) freq=str2num(freq); end
+     if ischar(freq) freq=str2num(freq); end
      if (isempty(freq)) freq=240; end
 
      [nstsleft, nfrsleft] = size(statesleft);
@@ -587,13 +674,13 @@ for fp=usefps
      accBase = centraldiff(velBase', freq)';
 
      % Calculate the interaction due to acceleration at other angles (degrees of
-     % freedom). Remove the diagonal, then multiply Mall with acc vector
+     % freedom). Remove the diagonwal, then multiply Mall with acc vector
      ntot = nBS+nLS+nRS;
      IM_acc = zeros(ntot, nfrs);
      for i=1:nfrs
          Mi = Mall(:,:,i); 
          Mi_nodiagonal = Mi - diag(diag(Mi));
-         IM_acc(:,i) = Mi_nodiagonal*cat(1, accBase(:,i), accLeft(:,i), accRight(:,i));
+         IM_acc(:,i) = Mi_nodiagonal*cat(1, accBase(:,i), accLeft(nBS+1:end,i), accRight(nBS+1:end,i));
      end
      
 
@@ -608,8 +695,7 @@ for fp=usefps
      disp('Computing interaction moments for hip and trunk')
      [IMbase, Cbase, dofnamesBase] = interaction_moments(gmbase, statesbase);%, dofs2study);
 
-     %% Combine interaction terms for the generalized coordinates of
-     % the base model
+     %% Combine interaction terms 
      
      
      IMbaseLR = IMbase + IMleft(1:nBaseStates, :) ...
@@ -619,8 +705,6 @@ for fp=usefps
          IMright(nBaseStates+1:end, :)) - IM_acc;
      
  
- 
-     
      % When calculating the Coriolis matrix, we assume the vector
      % of joint velocities to be [\dot{q}_B, \dot{q}_L, \dot{q}_R]
      CbaseLR = zeros(nBaseStates, ...
@@ -635,8 +719,7 @@ for fp=usefps
              Cright(1:nBaseStates, nBaseStates+1:end, :);
              
 
-     %% Now the induced accelerations. Since we have taken care of the off-diagonal inertial terms 
-     % these should not be included
+     %% Now the induced accelerations. Since we have taken care of the off-diagonal inertial terms these should not be included
      indAcc = zeros(ntot, nfrs);
      for i = 1:nfrs
          indAcc(:,i) = IMall(:, i)./diag(Mall(:,:,i));
@@ -644,21 +727,33 @@ for fp=usefps
      
      
      
+     %% Verify the calculated interaction moment of the elbow
+     %% flexion
+     tauLArm2 = IMall(elbowflexind, :)';
+     
+     % Plot interaction moment in elbow flexion, and the computed joint torque
+     figure(4)
+     clf
+     plot(tauLArm2, 'linewidth', 3)
+     hold on
+     plot(tauLArm)
+     legend('Interaction moment', 'elbow joint torque')
+     
+    
+
+     
+     
+     
      if debug
-         resultpath = fullfile(datapth,fps{fp,2}, date())
-         mkdir(resultpath)
-         
          dofnames = [dofnamesLeft; dofnamesRight(nBaseStates+1:end)]
          % Plot the interaction moments
-         figure(1)
+         figure(5)
          clf
          for dof=1:nLeftArmStates
             subplot(ceil(nLeftArmStates/2),2, dof)
             plot(IMleft(nBaseStates+dof,:)')
             title(dofnamesLeft{nBaseStates+dof})
          end
-         filename = fullfile(resultpath, 'left_arm_im.pdf')
-         print(filename, '-dpdf')
          
 %          subplot(121)
 %          plot(IMleft(nBaseStates+1:end,:)')
@@ -669,7 +764,7 @@ for fp=usefps
 %          legend(dofnamesRight{nBaseStates+1:end})
 %          title('Interaction moments, right arm')
 %          
-         figure(2)
+         figure(6)
          clf
          for dof=1:nRightArmStates
             subplot(ceil(nRightArmStates/2),2, dof)
@@ -679,38 +774,31 @@ for fp=usefps
 %         plot(IMbaseLR')
 %         title('Interaction moments, hip and trunk')
 %         legend(dofnamesBase)
-         filename = fullfile(resultpath, 'right_arm_im.pdf')
-         print(filename, '-dpdf')
-         
-         figure(3)
+      
+         figure(7)
          clf
          for dof=1:nLeftArmStates
             subplot(ceil(nLeftArmStates/2),2, dof)
-            plot(accLeft(dof,:)')
+            plot(accLeft(nBaseStates+dof,:)')
             hold on
             plot(indAcc(nBaseStates+dof,:)')
             title(dofnamesLeft{nBaseStates+dof})
          end
-         filename = fullfile(resultpath, 'left_arm_indacc_acc.pdf')
-         print(filename, '-dpdf')
          
-         figure(4)
+         figure(8)
          clf
          for dof=1:nRightArmStates
             subplot(ceil(nRightArmStates/2),2, dof)
-            plot(accRight(dof,:)')
+            plot(accRight(nBaseStates+dof,:)')
             hold on
             plot(indAcc(nBaseStates+nLeftArmStates+dof,:)')
             title(dofnamesRight{nBaseStates+dof})
          end
-         filename = fullfile(resultpath, 'right_arm_indacc_acc.pdf')
-         print(filename, '-dpdf')
          
         
      end
+
+    
   end
 end
 
-  
-  
-    

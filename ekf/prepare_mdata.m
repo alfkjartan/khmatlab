@@ -11,14 +11,17 @@ function [mnames, np0, np0vec] = prepare_mdata(p0)
 %    np0     <-  Nested cell array with initial marker
 %                positions. The names are removed.
 %                {markerdata, {...}}
-%    np0vec  <-  Vectorized version of np0vec
+%    np0vec  <-  Vectorized version of np0
 
 % Kjartan Halvorsen
 % 2003-08-04
 
 np0 = p0;
-if isempty(p0{1})
-  p0{1} = [];
+if isempty(p0)
+  np0{1} = [];
+  mnames = {};
+  np0vec = [];
+elseif isempty(p0{1})
   mnames = {}; 
   np0vec = [];
 else

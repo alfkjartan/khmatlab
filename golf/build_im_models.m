@@ -195,7 +195,7 @@ e_x =  elbow_med_l - elbow_lat_l; % Local x-axis pointing
                                   % left-right 
 e_x = e_x - (e_x'*e_z)*e_z;
 e_x = e_x / norm(e_x);
-e_y = cross(e_z, e_x);
+e_y = cross(e_z, e_x);            % Local y-axis point anterior-posterior
 
 luarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ghjc_l),...
 		      [0 0 0 1]);
@@ -209,7 +209,7 @@ luarm.states = {'left shoulder x', 0.1050, ...
                 luarm.localframe(1:3, 3)               
 		'left shoulder flexion', 0.6668, ...
                 luarm.localframe(1:3, 1)                
-		'left shoulder abduction', 0.7578, ...
+		'left shoulder adduction', 0.7578, ...
                 luarm.localframe(1:3, 2)                
 		'left shoulder rotation', 0.5297, ...
                 luarm.localframe(1:3, 3)};
@@ -227,6 +227,8 @@ luarm.moment_of_inertia = luarm.mass ...
 			   * diag( (luarm.length*[0.285 0.269 0.158]).^2 );
 luarm.generalized_inertia = [luarm.mass*eye(3) zeros(3,3)
 			      zeros(3,3)  luarm.moment_of_inertia];
+luarm.origin = ghjc_l;
+luarm.flexaxis = luarm.localframe(1:4, 1);
 
 % Forearm
 e_z = wjc_l - ejc_l;
@@ -245,6 +247,9 @@ llarm.states = {'left elbow flexion', 0.5708, ...
                 'left elbow rotation', 0.6794, ...
                llarm.localframe(1:3, 3)};
 llarm.markers = {}; % No markers to track the forearm
+
+llarm.origin = ejc_l;
+llarm.flexaxis = llarm.localframe(1:4,1);
 
 %% Data from de Leva
 llarm.length = norm(ejc_l - wjc_l);
@@ -284,6 +289,10 @@ lhand.markers = {'L_Hand_1', hand_1_l
 		 'CLUB_1', club_1_l
 		 'CLUB_2', club_2_l
 		 'CLUB_3', club_3_l};
+
+lhand.origin = ejc_l;
+lhand.flexaxis = lhand.localframe(1:4,1);
+     
 %% Data from de Leva
 lhand.length = norm(mid_mp_l - wjc_l);
 lhand.mass = 0.0061*bodymass;
@@ -318,7 +327,7 @@ e_x =  elbow_lat_r - elbow_med_r; % Local x-axis pointing
                                   % left-right 
 e_x = e_x - (e_x'*e_z)*e_z;
 e_x = e_x / norm(e_x);
-e_y = cross(e_z, e_x);
+e_y = cross(e_z, e_x);            % Local y-axis pointint anteriod-posterior
 
 ruarm.localframe = cat(1, cat(2, e_x, e_y, e_z, ghjc_r),...
 		      [0 0 0 1]);
@@ -331,7 +340,7 @@ ruarm.states = {'right shoulder x', 0.2678,...
                 ruarm.localframe(1:3, 3)
 	       'right shoulder flexion', 0.5174, ...
                 ruarm.localframe(1:3, 1)
-	       'right shoulder abduction', 0.3660, ...
+	       'right shoulder abduction', 0.3660, ...    % Note definition oposite from left side
                 ruarm.localframe(1:3, 2)
 	       'right shoulder rotation', 1, ...
                 ruarm.localframe(1:3, 3)
@@ -551,6 +560,9 @@ pelvis.moment_of_inertia = pelvis.mass ...
 pelvis.generalized_inertia = [pelvis.mass*eye(3) zeros(3,3)
 			      zeros(3,3)  pelvis.moment_of_inertia];
 
+pelvis.origin = midpelvis;
+pelvis.flexaxis = pelvis.localframe(1:4,1);
+
 % The trunk
 trunk.name = 'trunk';
 trunk_center = midpelvis; % Assume rotations around a point in
@@ -567,6 +579,9 @@ trunk.states = {'trunk tilt', 0.2541, ...
 trunk.markers = {'Upper_Torso_1', ut_1
 		 'Upper_Torso_2', ut_2
 		 'Upper_Torso_3', ut_3};
+
+trunk.origin = trunk_center;
+trunk.flexaxis = -trunk.localframe(1:4,2);
 
 % Using MPT together with UPT (middle and upper part of trunk) data from de Leva
 % Ignoring the head, since it is close to still during the movement.
@@ -606,20 +621,27 @@ trunk_nomass.mass = 0;
 trunk_nomass.moment_of_inertia = zeros(3,3);
 trunk_nomass.generalized_inertia = zeros(6,6);
 
+%keyboard
 
 %----------------------------------------------------------------
 % Define the complete models
-%----------------------------------------------------------------
+%--------------------------------------§--------------------------
 
-[gmbase.twists, gmbase.p0, gmbase.gcnames, gmbase.jcs, gmbase.segm_names, gmbase.CoM, radius, gmbase.mass, gmbase.g0, gmbase.inertia, gmbase.object_frame, gmbase.objectcenter] = build_model(pelvis,trunk);
+[gmbase.twists, gmbase.p0, gmbase.gcnames, gmbase.jcs, ...
+    gmbase.segm_names, gmbase.CoM, radius, ...
+    gmbase.mass, gmbase.g0, gmbase.inertia, ...
+    gmbase.localframe, gmbase.object_frame, gmbase.objectcenter] = build_model(pelvis,trunk);
 
-[gmleft.twists, gmleft.p0, gmleft.gcnames, gmleft.jcs, gmleft.segm_names, gmleft.CoM, ...
- radius_la, gmleft.mass, gmleft.g0, gmleft.inertia, gmleft.object_frame, ...
- gmleft.objectcenter] =  build_model(pelvis_nomass, trunk_nomass, luarm, llarm, lhand);
+[gmleft.twists, gmleft.p0, gmleft.gcnames, gmleft.jcs, gmleft.segm_names, ...
+    gmleft.CoM, ...
+ radius_la, gmleft.mass, gmleft.g0, gmleft.inertia, ...
+ gmleft.localframe, gmleft.object_frame, ...
+ gmleft.objectcenter, gmleft.flexaxis] =  build_model(pelvis_nomass, trunk_nomass, luarm, llarm, lhand);
 
-[gmright.twists, gmright.p0, gmright.gcnames, gmright.jcs, gmright.segm_names, gmright.CoM, ...
+[gmright.twists, gmright.p0, gmright.gcnames, gmright.jcs,...
+    gmright.segm_names, gmright.CoM, ...
  radius_la, gmright.mass, gmright.g0, gmright.inertia, ...
- gmright.object_frame, gmright.objectcenter] =  build_model(pelvis_nomass, trunk_nomass,...
+ gmright.localframe, gmright.object_frame, gmright.objectcenter] =  build_model(pelvis_nomass, trunk_nomass,...
                                                   ruarm, rlarm, rhand);
 
 

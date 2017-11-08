@@ -1,4 +1,5 @@
-function [tws, p0, gcnames, jc, segmnames, CoM, radius, mass, g0, inertia, objectframe, objectcenter]=build_model(varargin)
+function [tws, p0, gcnames, jc, segmnames, CoM, radius, mass, g0, inertia, ...
+    localframe, objectframe, objectcenter, flexaxis]=build_model(varargin)
 % Builds and returns a kinematic model (not a matlab object). Based
 % on build_km
 %
@@ -57,6 +58,7 @@ function [tws, p0, gcnames, jc, segmnames, CoM, radius, mass, g0, inertia, objec
 %    mass        <-   Vector containing the mass for each segment.
 %    g0          <-   Nested array of rigid trf. 
 %    inertia     <-   Nested array of generalized inertia.
+%    localframe    <-   Nested array of local frames 
 %    objectframe   <-   Nested array of object_frames.
 %    objectcenter   <-   Nested array of object_frames.
 %
@@ -102,6 +104,8 @@ for s=nsegm:-1:1
     inertia = {};
     objectframe = {};
     objectcenter = {};
+    localframe = {};
+    flexaxis = {};
   else
     twsbr=tws;
     tws=cell(2,1);
@@ -124,12 +128,19 @@ for s=nsegm:-1:1
     inertiabr = inertia;
     inertia = cell(2,1);
     inertia{2} = inertiabr;
+    localframebr = localframe;
+    localframe = cell(2,1);
+    localframe{2} = localframebr;
     objectframebr = objectframe;
     objectframe = cell(2,1);
     objectframe{2} = objectframebr;
     objectcenterbr = objectcenter;
     objectcenter = cell(2,1);
     objectcenter{2} = objectcenterbr;
+    flexaxisbr = flexaxis;
+    flexaxis = cell(2,1);
+    flexaxis{2} = flexaxisbr;
+    
   end
 
   segm=varargin{s};
@@ -168,6 +179,10 @@ for s=nsegm:-1:1
     CoM{1} = {[segm.name,'_CoM'], segm.CoM};
   end
 
+  if isfield(segm, 'flexaxis')
+    flexaxis{1} = {[segm.name,'_flexaxis'], segm.flexaxis};
+  end
+
   if isfield(segm, 'radius')
     radius{1} = {[segm.name,'_radius'], segm.radius};
   end
@@ -189,13 +204,17 @@ for s=nsegm:-1:1
     %%disp([segm.name, ' got g0']), g0
   end
 
+  if isfield(segm, 'localframe')
+    localframe{1} = { [segm.name, '_localframe'],segm.localframe};
+  end
+  
   if isfield(segm, 'generalized_inertia')
     inertia{1} = segm.generalized_inertia;
     %%disp([segm.name, ' got inertia']), segm.generalized_inertia
   end
 
   if isfield(segm, 'object_frame')
-    objectframe{1} = segm.object_frame;
+    objectframe{1} = {[segm.name, '_objframe'], segm.object_frame};
     %%g0{1} = segm.object_frame;
     jc{1} = {[segm.name,'_jc'], center};
     objectcenter{1} = {[segm.name, '_objcenter'], segm.object_frame(1:3,4)};
