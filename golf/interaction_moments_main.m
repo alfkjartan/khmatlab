@@ -588,12 +588,13 @@ for fp=usefps
 
      % Calculate the interaction due to acceleration at other angles (degrees of
      % freedom). Remove the diagonal, then multiply Mall with acc vector
+     accAll = cat(1, accBase, accLeft(nBS+1:end,:), accRight(nBS+1:end, :));
      ntot = nBS+nLS+nRS;
      IM_acc = zeros(ntot, nfrs);
      for i=1:nfrs
          Mi = Mall(:,:,i); 
          Mi_nodiagonal = Mi - diag(diag(Mi));
-         IM_acc(:,i) = Mi_nodiagonal*cat(1, accBase(:,i), accLeft(:,i), accRight(:,i));
+         IM_acc(:,i) = - Mi_nodiagonal*accAll(:,i);
      end
      
 
@@ -616,7 +617,7 @@ for fp=usefps
          + IMright(1:nBaseStates, :);
 
      IMall = cat(1, IMbaseLR, IMleft(nBaseStates+1:end,:), ...
-         IMright(nBaseStates+1:end, :)) - IM_acc;
+         IMright(nBaseStates+1:end, :)) + IM_acc;
      
  
  

@@ -10,8 +10,8 @@
 % The degrees of freedom to include in the analysis of interaction moments
 % Based on the set of dofs that contributed almost all clubhead
 % speed in the ISBS 2012 paper
-close all
-clear all
+%close all
+%clear all
 
 omega = 2; % rad/s of sinusoid
 amplitude = pi/2; % Amplitude of trunk rotation
@@ -441,8 +441,8 @@ for fp=usefps
     statesleft(shoulderaddind, :) = -pi/2;
   
     % And constant 90 degrees in elbow flexion - should give more effect
-    % form corilis, less from acc
-    statesleft(elbowflexind, :) = pi/2;
+    % form coriolis, less from acc
+    %statesleft(elbowflexind, :) = pi/2;
     
     
     
@@ -568,22 +568,22 @@ for fp=usefps
                                               mHand, elbowRef);
     
     
-    % Moment of inertia wrt elbow flexion axis
+    % Moment of inertia wrt elbow flexion axis and rotation axis
     % Check against generalized inertia
     Mleft = generalized_manipulator_inertia(gmleft, statesleft);
     elbowflexaxislocal = gmleft.gcnames{elbowflexind, 3};
     ILArm = elbowflexaxislocal'*ILArm3*elbowflexaxislocal;
     Mleft(elbowflexind, elbowflexind, 1)
     
-    comLArmTimeseries = (1/(mHand+mForearm)) ... 
-        * (mForearm*comForearmTimeseries + mHand* ...
-           comHandTimeseries);
-    
     figure(3)
     clf
     plot(reshape(Mleft(elbowflexind, elbowflexind, :), [N,1]))
     ylim([0.10, 0.11])
     title(sprintf('Should be constant and close to %f', ILArm))
+    
+    comLArmTimeseries = (1/(mHand+mForearm)) ... 
+        * (mForearm*comForearmTimeseries + mHand* ...
+           comHandTimeseries);
     
     
     %% Angle between elbowflexaxis and rotation axis
@@ -606,13 +606,15 @@ for fp=usefps
         elbowAccMoment3(i,:) = cross(rLArmTimeseries(i,:), ...
                                   -mLArm*elbowAcc(i,:));     % Since we are observing in accelerating frame of ref
         elbowAccMoment(i) = elbowAccMoment3(i,:)*elbowflexaxis(i,:)'; %% OBS: flexaxis not constant.
-        elbowflexacc(i) = armAcc(i,:)*elbowflexaxis(i,:)';
+        elbowflexacc(i) = armAcc(i,:)*elbowflexaxis(i,:)'; % armAcc is the angular acc of the arm
     end
     
     %elbowAccMoment = norm(sqrt(sum(elbowAccTangential.^2, 2));
     %tauLArm = ILArm*angacc' + mLArm*rLArm)*elbowAccNormTangential.*sign(angacc');
     %tauLArm = ILArm*angacc' - mLArm*elbowAccMoment;
-    tauLArm = ILArm*elbowflexacc - elbowAccMoment; 
+    tauLArmAngAcc = ILArm*elbowflexacc;
+    tauLArmAccFrame = -elbowAccMoment;
+    tauLArm = tauLArmAngAcc + tauLArmAccFrame; 
     % Negative signs since elbow flexaxis is opposite direction of
     % rotation axis
     
@@ -627,10 +629,18 @@ for fp=usefps
      nLS = nLeftArmStates;
      nRS = nRightArmStates;
     
-     Mbase = generalized_manipulator_inertia(gmbase, statesbase);
-     Mleft = generalized_manipulator_inertia(gmleft, statesleft);
-     Mright = generalized_manipulator_inertia(gmright, statesright);
-    
+     Mbase = generalized_manipulator_inertia(gmbase, statesbase(1:nBS, :));
+     Mleft = generalized_manipulator_inertia(gmleft, statesleft(1:nBS+nLS, :));
+     Mright = generalized_manipulator_inertia(gmright, statesright(1:nBS+nRS, :));
+
+     % Debug. OK!
+     [twsBase, g0Base, MbBase, gcnamesBase] = flatten_km(gmbase);
+     [twsLeft, g0Left, MbLeft, gcnamesLeft] = flatten_km(gmleft);
+     [twsRight, g0Right, MbRight, gcnamesRight] = flatten_km(gmright);
+     Mbase_flat = generalized_manipulator_inertia_flattened(MbBase, twsBase, g0Base, statesbase(1:nBS, 60));
+     Mleft_flat = generalized_manipulator_inertia_flattened(MbLeft, twsLeft, g0Left, statesleft(1:nLS+nBS, 60));
+     Mright_flat = generalized_manipulator_inertia_flattened(MbRight, twsRight, g0Right, statesright(1:nRS+nBS, 60));
+     
      Mbase = Mbase(1:nBS, 1:nBS, :); % Kolla om inte har nBS rader från början
      Mleft = Mleft(1:nBS+nLS, 1:nBS+nLS, :);
      Mright = Mright(1:nBS+nRS, 1:nBS+nRS, :);
@@ -663,16 +673,18 @@ for fp=usefps
 
      [nstsleft, nfrsleft] = size(statesleft);
      velLeft = statesleft(nstsleft/2+1:end,:);
-     accLeft = centraldiff(velLeft', freq)';
+     accLeft = centraldiff(velLeft', sfreq)'; % OBS sfreq is for this simulation!!!!
      
      [nstsright, nfrsright] = size(statesright);
      velRight = statesright(nstsright/2+1:end,:);
-     accRight = centraldiff(velRight', freq)';
+     accRight = centraldiff(velRight', sfreq)';
                        
      [nstsbase, nfrsbase] = size(statesbase);
      velBase = statesbase(nstsbase/2+1:end,:);
-     accBase = centraldiff(velBase', freq)';
+     accBase = centraldiff(velBase', sfreq)';
 
+     accAll = cat(1, accBase, accLeft(nBS+1:end,:), accRight(nBS+1:end, :));
+     
      % Calculate the interaction due to acceleration at other angles (degrees of
      % freedom). Remove the diagonwal, then multiply Mall with acc vector
      ntot = nBS+nLS+nRS;
@@ -680,7 +692,8 @@ for fp=usefps
      for i=1:nfrs
          Mi = Mall(:,:,i); 
          Mi_nodiagonal = Mi - diag(diag(Mi));
-         IM_acc(:,i) = Mi_nodiagonal*cat(1, accBase(:,i), accLeft(nBS+1:end,i), accRight(nBS+1:end,i));
+         % IM_acc(:,i) = - Mi_nodiagonal*cat(1, accBase(:,i), accLeft(nBS+1:end,i), accRight(nBS+1:end,i));
+         IM_acc(:,i) = - Mi_nodiagonal*accAll(:,i);
      end
      
 
@@ -701,8 +714,9 @@ for fp=usefps
      IMbaseLR = IMbase + IMleft(1:nBaseStates, :) ...
          + IMright(1:nBaseStates, :);
 
-     IMall = cat(1, IMbaseLR, IMleft(nBaseStates+1:end,:), ...
-         IMright(nBaseStates+1:end, :)) - IM_acc;
+     IM_vel = cat(1, IMbaseLR, IMleft(nBaseStates+1:end,:), ...
+         IMright(nBaseStates+1:end, :));
+     IMall =  IM_vel + IM_acc;
      
  
      % When calculating the Coriolis matrix, we assume the vector
@@ -730,14 +744,24 @@ for fp=usefps
      %% Verify the calculated interaction moment of the elbow
      %% flexion
      tauLArm2 = IMall(elbowflexind, :)';
+     tauLArm2Vel = IM_vel(elbowflexind, :)';
+     tauLArm2Acc = IM_acc(elbowflexind, :)';
      
      % Plot interaction moment in elbow flexion, and the computed joint torque
      figure(4)
      clf
      plot(tauLArm2, 'linewidth', 3)
      hold on
-     plot(tauLArm)
-     legend('Interaction moment', 'elbow joint torque')
+     plot(tauLArm, 'linewidth', 2)
+     plot(tauLArm2Vel)
+     plot(tauLArm2Acc)
+     plot(tauLArmAccFrame)
+     plot(tauLArmAngAcc)
+     legend('Interaction moment', 'elbow joint torque', ...
+         'Interaction moment, velocity dependent', ...
+         'Interaction moment, acc dependent', ...
+         'joint torque due to accelerating frame fixed in elbow', ...
+         'joint torque due to angular acceleration')
      
     
 
@@ -745,7 +769,7 @@ for fp=usefps
      
      
      if debug
-         dofnames = [dofnamesLeft; dofnamesRight(nBaseStates+1:end)]
+         dofnames = [dofnamesLeft; dofnamesRight(nBaseStates+1:end)];
          % Plot the interaction moments
          figure(5)
          clf
