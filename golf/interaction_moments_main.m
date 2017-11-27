@@ -27,7 +27,16 @@ dofs2study = {'pelvis obliquety', ...
               'right elbow flexion', ...
               'right wrist flexion', ...
               'right wrist abduction'};
-              
+
+% Simplified set November 2017
+dofs2studyleft = {'left shoulder flexion', ...
+              'left shoulder rotation', ...
+              'left elbow rotation', ...
+              'left wrist flexion'};              
+dofs2studyright = {'right shoulder abduction', ...
+              'right shoulder rotation', ...
+              'right elbow flexion', ...
+              'right wrist flexion'};              
 
 debug = 1;
 
@@ -469,17 +478,21 @@ for fp=usefps
   
   bodymass = fps{fp,4};
   refdata = load(fullfile(datapth,fps{fp,2},fps{fp,3}));
-    
+  
+  resultpath = fullfile(datapth,fps{fp,2}, date())
+  mkdir(resultpath)
+
   
   for tr=usetrials
+    
+    trialname = trials{tr}(1:end-4);
     
     % Read the marker data
     filestr = fullfile(datapth,fps{fp,2},trials{tr});
     mdata = openmocapfile('', filestr);
 
     if useCustomStartFrame
-        trial = trials{tr}(1:end-4);
-        startfr = getfield(getfield(startFrame,fps{fp,1}), trial)
+        startfr = getfield(getfield(startFrame,fps{fp,1}), trialname)
         mdata{2} = mdata{2}(startfr:end,:);
         mdata{1,1}{1,2} = num2str(length(mdata{2}));       
     end
@@ -527,49 +540,13 @@ for fp=usefps
 
      end
 
-     %% Calculate the inertia matrices and its inverse needed to compute the
-     %% acceleration induced by the interaction moments 
-     nfrs = size(statesleft, 2);
-     nBaseStates = size(statesbase, 1)/2;
-     nLeftArmStates = size(statesleft, 1)/2 - nBaseStates;
-     nRightArmStates = size(statesright, 1)/2 - nBaseStates;
-     nBS = nBaseStates;
-     nLS = nLeftArmStates;
-     nRS = nRightArmStates;
-    
-     Mbase = generalized_manipulator_inertia(gmbase, statesbase);
-     Mleft = generalized_manipulator_inertia(gmleft, statesleft);
-     Mright = generalized_manipulator_inertia(gmright, statesright);
-    
-     Mbase = Mbase(1:nBS, 1:nBS, :);
-     Mleft = Mleft(1:nBS+nLS, 1:nBS+nLS, :);
-     Mright = Mright(1:nBS+nRS, 1:nBS+nRS, :);
      
+     %% Find events. 
+     clubcom = extractmarkers(mdata, 'ClubCoM');
+     [imp_fr, imp_fit, back_starts, back_ends] = find_events_new(clubcom);
+ 
      
-     % Combine
-     % The mass matrix for the complete model with base and the two arms is given by
-     %          [   M_B + M_L,B  + M_R,B      M_L,BL       M_R,BR ]
-     %       M =[   M_L,LB                    M_L,L        0      ]
-     %          [   M_R,RB                     0           M_R,R  ]        
- 
-     ML_B = Mleft(1:nBS, 1:nBS,:);
-     ML_L = Mleft(nBS+1:end,nBS+1:end,:);
-     ML_BL = Mleft(1:nBS, nBS+1:end,:);
-     MR_B = Mright(1:nBS, 1:nBS,:);
-     MR_R = Mright(nBS+1:end,nBS+1:end,:);
-     MR_BR = Mright(1:nBS, nBS+1:end,:);
- 
-     Mall = zeros(nBS+nLS+nRS, nBS+nLS+nRS, nfrs);
-     Mall(1:nBS, 1:nBS, :) = Mbase+ML_B+MR_B;
-     Mall(1:nBS, nBS+1:nBS+nLS, :) = ML_BL;
-    
-     Mall(nBS+1:nBS+nLS, 1:nBS,:) = permute(ML_BL, [2,1,3]);
-     Mall(nBS+1:nBS+nLS, nBS+1:nBS+nLS,:) = ML_L;
- 
-     Mall(nBS+1+nLS:end, 1:nBS,:) = permute(MR_BR, [2,1,3]);
-     Mall(nBS+1+nLS:end, nBS+1+nLS:end,:) = MR_R;
-     
-     % And the joint accelerations
+     %% Joint accelerations
      freq=getvalue(mdata{1},'FREQUENCY');      % The sampling time
      if isstr(freq) freq=str2num(freq); end
      if (isempty(freq)) freq=240; end
@@ -586,129 +563,86 @@ for fp=usefps
      velBase = statesbase(nstsbase/2+1:end,:);
      accBase = centraldiff(velBase', freq)';
 
-     % Calculate the interaction due to acceleration at other angles (degrees of
-     % freedom). Remove the diagonal, then multiply Mall with acc vector
-     accAll = cat(1, accBase, accLeft(nBS+1:end,:), accRight(nBS+1:end, :));
-     ntot = nBS+nLS+nRS;
-     IM_acc = zeros(ntot, nfrs);
-     for i=1:nfrs
-         Mi = Mall(:,:,i); 
-         Mi_nodiagonal = Mi - diag(diag(Mi));
-         IM_acc(:,i) = - Mi_nodiagonal*accAll(:,i);
+     endfr = min(nfrsbase, imp_fr + 10);
+     [IMall, indAcc, Mall, gcnames, accAll] = interaction_moments_base_two_arms(...
+                                        gmbase, gmleft, gmright, ...
+                                        statesbase(:, back_ends:endfr), ...
+                                        statesleft(:, back_ends:endfr), ...
+                                        statesright(:, back_ends:endfr), ...
+                                        accBase(:, back_ends:endfr), ...
+                                        accLeft(:, back_ends:endfr), ...
+                                        accRight(:, back_ends:endfr));
+  
+     
+
+     %% Plot results
+     rescolor = 0.8*[239/255, 138/255, 98/255];
+     compcolor = 0.8*[103/255, 169/255, 207/255];
+     figure(1)
+     clf
+     set(gcf, 'position', [100,100, 600, 800])
+     rows = max(length(dofs2studyleft), length(dofs2studyright));
+     index = reshape(1:2*rows, 2, rows).';
+     for dof=1:length(dofs2studyleft)
+          subplot(rows ,2, index(dof))
+          dof_ind = find(ismember(gcnames, dofs2studyleft{dof}));
+          plot(IMall(dof_ind,:)', 'color', rescolor)
+          hold on 
+          yl = get(gca, 'ylim');
+          plot((imp_fr-back_ends)*[1,1], yl, 'k:', 'linewidth', 0.5)
+          title(gcnames{dof_ind})
+          ylabel('Nm')
      end
-     
-
-     %% Calculate the interaction moments. OBS these are due to velocity only. Must be combined with IM_acc
-     % im is the interaction moment for each degree of freedom, C
-     % is the Coriolis matrix, i.e. 
-     %  im = -C * \dot{q} 
-     disp('Computing interaction moments for left arm')
-     [IMleft, Cleft, dofnamesLeft] = interaction_moments(gmleft, statesleft); %, dofs2study);
-     disp('Computing interaction moments for right arm')
-     [IMright, Cright, dofnamesRight] = interaction_moments(gmright, statesright);%, dofs2study);
-     disp('Computing interaction moments for hip and trunk')
-     [IMbase, Cbase, dofnamesBase] = interaction_moments(gmbase, statesbase);%, dofs2study);
-
-     %% Combine interaction terms for the generalized coordinates of
-     % the base model
-     
-     
-     IMbaseLR = IMbase + IMleft(1:nBaseStates, :) ...
-         + IMright(1:nBaseStates, :);
-
-     IMall = cat(1, IMbaseLR, IMleft(nBaseStates+1:end,:), ...
-         IMright(nBaseStates+1:end, :)) + IM_acc;
-     
- 
- 
-     
-     % When calculating the Coriolis matrix, we assume the vector
-     % of joint velocities to be [\dot{q}_B, \dot{q}_L, \dot{q}_R]
-     CbaseLR = zeros(nBaseStates, ...
-                     nBaseStates+nLeftArmStates+nRightArmStates, ... 
-                     nfrs); 
-     CbaseLR(:,1:nBaseStates, :) = Cbase ...
-         + Cleft(1:nBaseStates, 1:nBaseStates,:) ...
-         + Cright(1:nBaseStates, 1:nBaseStates,:);
-     CbaseLR(:, nBaseStates+1:nBaseStates+nLeftArmStates,:) = ...
-         Cleft(1:nBaseStates, nBaseStates+1:end, :);
-     CbaseLR(:, nBaseStates+nLeftArmStates+1:end, :) = ...
-             Cright(1:nBaseStates, nBaseStates+1:end, :);
-             
-
-     %% Now the induced accelerations. Since we have taken care of the off-diagonal inertial terms 
-     % these should not be included
-     indAcc = zeros(ntot, nfrs);
-     for i = 1:nfrs
-         indAcc(:,i) = IMall(:, i)./diag(Mall(:,:,i));
+     for dof=1:length(dofs2studyright)
+          subplot(rows ,2, index(rows+dof))
+          dof_ind = find(ismember(gcnames, dofs2studyright{dof}));
+          plot(IMall(dof_ind,:)','color', rescolor)
+          hold on 
+          yl = get(gca, 'ylim');
+          plot((imp_fr-back_ends)*[1,1], yl, 'k:', 'linewidth', 0.5)
+          title(gcnames{dof_ind})
+          ylabel('Nm')
      end
-     
-     
-     
-     if debug
-         resultpath = fullfile(datapth,fps{fp,2}, date())
-         mkdir(resultpath)
+     uicontrol('Style', 'Text', 'Units', 'Normalized', ...
+          'Position', [0.3, 0.95, 0.4,0.05], ...
+          'String', 'Interaction moments', 'FontSize', 14, ...
+          'BackgroundColor', 'w')
+     filename = fullfile(resultpath, [trialname, '_im.pdf'])
+     print(filename, '-dpdf')
          
-         dofnames = [dofnamesLeft; dofnamesRight(nBaseStates+1:end)]
-         % Plot the interaction moments
-         figure(1)
-         clf
-         for dof=1:nLeftArmStates
-            subplot(ceil(nLeftArmStates/2),2, dof)
-            plot(IMleft(nBaseStates+dof,:)')
-            title(dofnamesLeft{nBaseStates+dof})
-         end
-         filename = fullfile(resultpath, 'left_arm_im.pdf')
-         print(filename, '-dpdf')
-         
-%          subplot(121)
-%          plot(IMleft(nBaseStates+1:end,:)')
-%          title('Interaction moments, left arm')
-%          legend(dofnamesLeft{nBaseStates+1:end})
-%          subplot(122)
-%          plot(IMright(nBaseStates+1:end,:)')
-%          legend(dofnamesRight{nBaseStates+1:end})
-%          title('Interaction moments, right arm')
-%          
-         figure(2)
-         clf
-         for dof=1:nRightArmStates
-            subplot(ceil(nRightArmStates/2),2, dof)
-            plot(IMright(nBaseStates+dof,:)')
-            title(dofnamesRight{nBaseStates+dof})
-         end
-%         plot(IMbaseLR')
-%         title('Interaction moments, hip and trunk')
-%         legend(dofnamesBase)
-         filename = fullfile(resultpath, 'right_arm_im.pdf')
-         print(filename, '-dpdf')
-         
-         figure(3)
-         clf
-         for dof=1:nLeftArmStates
-            subplot(ceil(nLeftArmStates/2),2, dof)
-            plot(accLeft(dof,:)')
-            hold on
-            plot(indAcc(nBaseStates+dof,:)')
-            title(dofnamesLeft{nBaseStates+dof})
-         end
-         filename = fullfile(resultpath, 'left_arm_indacc_acc.pdf')
-         print(filename, '-dpdf')
-         
-         figure(4)
-         clf
-         for dof=1:nRightArmStates
-            subplot(ceil(nRightArmStates/2),2, dof)
-            plot(accRight(dof,:)')
-            hold on
-            plot(indAcc(nBaseStates+nLeftArmStates+dof,:)')
-            title(dofnamesRight{nBaseStates+dof})
-         end
-         filename = fullfile(resultpath, 'right_arm_indacc_acc.pdf')
-         print(filename, '-dpdf')
-         
-        
+     figure(2)
+     clf
+     set(gcf, 'position', [200,100, 600, 800])
+     for dof=1:length(dofs2studyleft)
+          subplot(rows ,2, index(dof))
+          dof_ind = find(ismember(gcnames, dofs2studyleft{dof}));
+          plot(indAcc(dof_ind,:)','color', rescolor)
+          hold on
+          plot(accAll(dof_ind,:)','color', compcolor)
+          yl = get(gca, 'ylim');
+          plot((imp_fr-back_ends)*[1,1], yl, 'k:', 'linewidth', 0.5)
+          
+          title(gcnames{dof_ind})
+          ylabel('m/s^2')
      end
+     for dof=1:length(dofs2studyright)
+          subplot(rows ,2, index(rows + dof))
+          dof_ind = find(ismember(gcnames, dofs2studyright{dof}));
+          plot(indAcc(dof_ind,:)','color', rescolor)
+          hold on
+          plot(accAll(dof_ind,:)','color', compcolor)
+          yl = get(gca, 'ylim');
+          plot((imp_fr-back_ends)*[1,1], yl, 'k:', 'linewidth', 0.5)
+          title(gcnames{dof_ind})
+          ylabel('m/s^2')
+
+     end
+     uicontrol('Style', 'Text', 'Units', 'Normalized', ...
+          'Position', [0.3, 0.95, 0.4,0.05], ...
+          'String', 'Induced accelerations', 'FontSize', 14)
+     filename = fullfile(resultpath, [trialname, '_indacc.pdf'])
+     print(filename, '-dpdf')
+     
   end
 end
 
